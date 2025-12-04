@@ -1,0 +1,58 @@
+"""Playwright를 사용한 웹 테스트"""
+import pytest_check as check
+
+from src.actions.web.auth_actions import AuthActions
+from src.locators.web import auth_locators
+
+
+def test_add_todo(todo_page):
+    """새 할일 추가 테스트"""
+    todo_page.add_todo("Web Test Todo")
+    check.is_true(todo_page.view_todos())
+
+
+def test_view_todos(todo_page):
+    """할일 리스트 조회 테스트"""
+    check.is_true(todo_page.view_todos())
+
+
+def test_complete_todo(todo_page):
+    """할일 완료 처리 테스트"""
+    todo_page.complete_todo()
+    check.is_true(todo_page.verify_todo_completed())
+
+
+def test_delete_todo(todo_page):
+    """할일 삭제 테스트"""
+    initial_count = todo_page.get_todo_count()
+
+    todo_page.delete_todo()
+
+    final_count = todo_page.get_todo_count()
+    check.equal(final_count, initial_count - 1)
+
+
+def test_cancel_delete_todo(todo_page):
+    """할일 삭제 취소 테스트"""
+    initial_count = todo_page.get_todo_count()
+
+    todo_page.cancel_delete_todo()
+
+    final_count = todo_page.get_todo_count()
+    check.equal(final_count, initial_count)
+
+
+def test_logout_redirects_to_login(web_page, web_base_url):
+    """로그아웃 시 로그인 페이지(#page-login)로 돌아가는지 확인"""
+    auth = AuthActions(web_page)
+
+    # JWT 토큰 기반 로그인 상태로 메인 페이지 진입 (conftest.py 설정 사용)
+    auth.setup_jwt_login(web_base_url)
+    check.is_true(auth.verify_logged_in())
+
+    # 로그아웃 수행
+    auth.logout()
+
+    # 로그인 페이지(#page-login)가 보이는지 확인
+    is_login_page = auth.base_page.is_visible(auth_locators.PAGE_LOGIN)
+    check.is_true(is_login_page)

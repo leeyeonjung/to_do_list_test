@@ -159,6 +159,46 @@ def update_jwt_env_file(
     log.info(f".env 파일 업데이트 완료: {env_path}")
 
 
+def validate_jwt_token(
+    backend_base_url: str,
+    token: str,
+    endpoint: str = "/api/auth/me"
+) -> Tuple[bool, Optional[Dict]]:
+    """
+    JWT 토큰의 유효성을 검증
+
+    Args:
+        backend_base_url: 백엔드 기본 URL
+        token: 검증할 JWT 토큰
+        endpoint: 토큰 검증 엔드포인트 (기본값: "/api/auth/me")
+
+    Returns:
+        tuple: (is_valid: bool, user_data: Optional[Dict])
+        - is_valid: 토큰이 유효하면 True, 아니면 False
+        - user_data: 토큰이 유효할 경우 사용자 정보, 아니면 None
+    """
+    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+    
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    
+    log.info(f"JWT 토큰 유효성 검증: {url}")
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        user_data = response.json()
+        log.info("JWT 토큰이 유효합니다.")
+        return True, user_data
+    elif response.status_code == 401:
+        log.warning("JWT 토큰이 유효하지 않거나 만료되었습니다.")
+        return False, None
+    else:
+        log.warning(f"토큰 검증 중 예상치 못한 상태 코드: {response.status_code}")
+        return False, None
+
+
 def fetch_and_update_jwt_token(
     user_id: int,
     email: Optional[str] = None,
@@ -218,46 +258,6 @@ def fetch_and_update_jwt_token(
 
     log.info("JWT 토큰 요청 및 .env 파일 업데이트 완료")
     return response_data
-
-
-def validate_jwt_token(
-    backend_base_url: str,
-    token: str,
-    endpoint: str = "/api/auth/me"
-) -> Tuple[bool, Optional[Dict]]:
-    """
-    JWT 토큰의 유효성을 검증
-
-    Args:
-        backend_base_url: 백엔드 기본 URL
-        token: 검증할 JWT 토큰
-        endpoint: 토큰 검증 엔드포인트 (기본값: "/api/auth/me")
-
-    Returns:
-        tuple: (is_valid: bool, user_data: Optional[Dict])
-        - is_valid: 토큰이 유효하면 True, 아니면 False
-        - user_data: 토큰이 유효할 경우 사용자 정보, 아니면 None
-    """
-    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-    
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    
-    log.info(f"JWT 토큰 유효성 검증: {url}")
-    
-    response = requests.get(url, headers=headers)
-    
-    if response.status_code == 200:
-        user_data = response.json()
-        log.info("JWT 토큰이 유효합니다.")
-        return True, user_data
-    elif response.status_code == 401:
-        log.warning("JWT 토큰이 유효하지 않거나 만료되었습니다.")
-        return False, None
-    else:
-        log.warning(f"토큰 검증 중 예상치 못한 상태 코드: {response.status_code}")
-        return False, None
 
 
 def ensure_valid_jwt_token(
@@ -331,6 +331,229 @@ def ensure_valid_jwt_token(
 
 
 # ============================================================================
+# OAuth Token Functions (Common)
+# ============================================================================
+def validate_oauth_token(
+    backend_base_url: str,
+    access_token: str,
+    provider: str,
+    endpoint: str
+) -> Tuple[bool, Optional[Dict]]:
+    """
+    OAuth AccessToken을 백엔드 API로 검증하여 JWT 토큰 발급 (공통 함수)
+
+    Args:
+        backend_base_url: 백엔드 기본 URL
+        access_token: OAuth AccessToken
+        provider: OAuth 제공자 이름 (예: "kakao", "naver")
+        endpoint: 토큰 검증 엔드포인트
+
+    Returns:
+        tuple: (is_valid: bool, response_data: Optional[Dict])
+        - is_valid: 토큰이 유효하면 True, 아니면 False
+        - response_data: {"token": str, "user": dict} 형식의 응답 데이터, 실패 시 None
+    """
+    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "accessToken": access_token
+    }
+    
+    log.info(f"{provider.capitalize()} 토큰 유효성 검증: {url}")
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        log.info(f"{provider.capitalize()} 토큰이 유효합니다.")
+        return True, data
+    else:
+        log.warning(f"{provider.capitalize()} 토큰 검증 실패: {response.status_code} - {response.text}")
+        return False, None
+
+
+def refresh_oauth_token(
+    backend_base_url: str,
+    refresh_token: str,
+    provider: str,
+    endpoint: str
+) -> Optional[Dict]:
+    """
+    OAuth RefreshToken을 사용하여 새로운 AccessToken 발급 (공통 함수)
+
+    Args:
+        backend_base_url: 백엔드 기본 URL
+        refresh_token: OAuth RefreshToken
+        provider: OAuth 제공자 이름 (예: "kakao", "naver")
+        endpoint: 토큰 갱신 엔드포인트
+
+    Returns:
+        dict: {"token": str, "refreshToken": str, "user": dict} 형식의 응답 데이터, 실패 시 None
+    """
+    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "refreshToken": refresh_token
+    }
+    
+    log.info(f"{provider.capitalize()} 토큰 갱신 요청: {url}")
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        log.info(f"{provider.capitalize()} 토큰 갱신 성공")
+        return data
+    else:
+        log.error(f"{provider.capitalize()} 토큰 갱신 실패: {response.status_code} - {response.text}")
+        return None
+
+
+def update_oauth_env_file(
+    env_path: Path,
+    refresh_token: Optional[str],
+    provider: str
+) -> None:
+    """
+    .env 파일의 OAuth RefreshToken 업데이트 (공통 함수)
+    (WEB_TEST_JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
+
+    Args:
+        env_path: .env 파일 경로
+        refresh_token: OAuth RefreshToken (갱신된 경우)
+        provider: OAuth 제공자 이름 (예: "kakao", "naver")
+    """
+    if not env_path.exists():
+        log.error(f".env 파일을 찾을 수 없습니다: {env_path}")
+        return
+    
+    if not refresh_token:
+        return
+    
+    # .env 파일 읽기
+    with open(env_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # OAuth RefreshToken 업데이트
+    env_key = f"{provider.upper()}_REFRESH_TOKEN"
+    refresh_token_pattern = rf"^{env_key}=.*$"
+    refresh_token_replacement = f"{env_key}={refresh_token}"
+    
+    if re.search(refresh_token_pattern, content, re.MULTILINE):
+        content = re.sub(refresh_token_pattern, refresh_token_replacement, content, flags=re.MULTILINE)
+    else:
+        content += f"\n{env_key}={refresh_token}\n"
+    
+    # .env 파일 쓰기
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    
+    log.info(f".env 파일 업데이트 완료: {env_path}")
+
+
+def ensure_valid_oauth_token(
+    provider: str,
+    backend_base_url: Optional[str] = None,
+    env_path: Optional[Path] = None,
+    validate_endpoint: Optional[str] = None,
+    refresh_endpoint: Optional[str] = None
+) -> Optional[str]:
+    """
+    OAuth 토큰이 유효한지 확인하고, 유효하지 않으면 RefreshToken으로 갱신하여 JWT 토큰 발급 (공통 함수)
+
+    Args:
+        provider: OAuth 제공자 이름 (예: "kakao", "naver")
+        backend_base_url: 백엔드 기본 URL (None이면 .env에서 로드)
+        env_path: .env 파일 경로 (None이면 프로젝트 루트의 .env 사용)
+        validate_endpoint: 토큰 검증 엔드포인트 (None이면 기본값 사용)
+        refresh_endpoint: 토큰 갱신 엔드포인트 (None이면 기본값 사용)
+
+    Returns:
+        str: 유효한 JWT 토큰, 실패 시 None
+    """
+    # .env 파일 경로 설정
+    if env_path is None:
+        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    
+    # .env 파일 로드
+    load_dotenv(env_path)
+    
+    # 백엔드 기본 URL 설정
+    if backend_base_url is None:
+        backend_base_url = os.getenv("BACKEND_BASE_URL")
+        if not backend_base_url:
+            log.error("BACKEND_BASE_URL이 .env 파일에 설정되어 있지 않습니다.")
+            return None
+    
+    # 엔드포인트 기본값 설정
+    if validate_endpoint is None:
+        validate_endpoint = f"/api/auth/{provider}"
+    if refresh_endpoint is None:
+        refresh_endpoint = f"/api/auth/{provider}/refresh"
+    
+    # OAuth 토큰 정보 로드 (값에 '=' 기호가 포함될 수 있으므로 직접 파싱)
+    provider_upper = provider.upper()
+    access_token = get_env_value(env_path, f"{provider_upper}_ACCESS_TOKEN")
+    refresh_token = get_env_value(env_path, f"{provider_upper}_REFRESH_TOKEN")
+    
+    if not access_token:
+        log.error(f"{provider_upper}_ACCESS_TOKEN이 .env 파일에 설정되어 있지 않습니다.")
+        return None
+    
+    # 기존 AccessToken으로 검증
+    is_valid, response_data = validate_oauth_token(
+        backend_base_url=backend_base_url,
+        access_token=access_token,
+        provider=provider,
+        endpoint=validate_endpoint,
+    )
+    
+    if is_valid and response_data:
+        token = response_data.get("token")
+        if token:
+            log.info(f"기존 {provider.capitalize()} 토큰이 유효합니다.")
+            return token
+    
+    # 토큰이 유효하지 않으면 RefreshToken으로 갱신 시도
+    if not refresh_token:
+        log.error(f"{provider_upper}_REFRESH_TOKEN이 .env 파일에 설정되어 있지 않습니다.")
+        return None
+    
+    log.info(f"{provider.capitalize()} 토큰이 유효하지 않습니다. RefreshToken으로 갱신합니다.")
+    refresh_response = refresh_oauth_token(
+        backend_base_url=backend_base_url,
+        refresh_token=refresh_token,
+        provider=provider,
+        endpoint=refresh_endpoint,
+    )
+    
+    if not refresh_response:
+        log.error(f"{provider.capitalize()} 토큰 갱신에 실패했습니다.")
+        return None
+    
+    # 갱신된 토큰 정보 추출
+    new_token = refresh_response.get("token")
+    new_refresh_token = refresh_response.get("refreshToken")
+    
+    if new_token:
+        if new_refresh_token:
+            update_oauth_env_file(env_path, refresh_token=new_refresh_token, provider=provider)
+        log.info(f"{provider.capitalize()} 토큰 갱신 및 JWT 토큰 발급 완료")
+        return new_token
+    
+    log.error("갱신된 응답에 JWT 토큰이 없습니다.")
+    return None
+
+
+# ============================================================================
 # Kakao Token Functions
 # ============================================================================
 def validate_kakao_token(
@@ -351,27 +574,12 @@ def validate_kakao_token(
         - is_valid: 토큰이 유효하면 True, 아니면 False
         - response_data: {"token": str, "user": dict} 형식의 응답 데이터, 실패 시 None
     """
-    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "accessToken": access_token
-    }
-    
-    log.info(f"Kakao 토큰 유효성 검증: {url}")
-    
-    response = requests.post(url, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        data = response.json()
-        log.info("Kakao 토큰이 유효합니다.")
-        return True, data
-    else:
-        log.warning(f"Kakao 토큰 검증 실패: {response.status_code} - {response.text}")
-        return False, None
+    return validate_oauth_token(
+        backend_base_url=backend_base_url,
+        access_token=access_token,
+        provider="kakao",
+        endpoint=endpoint
+    )
 
 
 def refresh_kakao_token(
@@ -390,27 +598,12 @@ def refresh_kakao_token(
     Returns:
         dict: {"token": str, "refreshToken": str, "user": dict} 형식의 응답 데이터, 실패 시 None
     """
-    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "refreshToken": refresh_token
-    }
-    
-    log.info(f"Kakao 토큰 갱신 요청: {url}")
-    
-    response = requests.post(url, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        data = response.json()
-        log.info("Kakao 토큰 갱신 성공")
-        return data
-    else:
-        log.error(f"Kakao 토큰 갱신 실패: {response.status_code} - {response.text}")
-        return None
+    return refresh_oauth_token(
+        backend_base_url=backend_base_url,
+        refresh_token=refresh_token,
+        provider="kakao",
+        endpoint=endpoint
+    )
 
 
 def update_kakao_env_file(
@@ -425,31 +618,11 @@ def update_kakao_env_file(
         env_path: .env 파일 경로
         refresh_token: Kakao RefreshToken (갱신된 경우)
     """
-    if not env_path.exists():
-        log.error(f".env 파일을 찾을 수 없습니다: {env_path}")
-        return
-    
-    if not refresh_token:
-        return
-    
-    # .env 파일 읽기
-    with open(env_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    # Kakao RefreshToken 업데이트
-    refresh_token_pattern = r"^KAKAO_REFRESH_TOKEN=.*$"
-    refresh_token_replacement = f"KAKAO_REFRESH_TOKEN={refresh_token}"
-    
-    if re.search(refresh_token_pattern, content, re.MULTILINE):
-        content = re.sub(refresh_token_pattern, refresh_token_replacement, content, flags=re.MULTILINE)
-    else:
-        content += f"\nKAKAO_REFRESH_TOKEN={refresh_token}\n"
-    
-    # .env 파일 쓰기
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.write(content)
-    
-    log.info(f".env 파일 업데이트 완료: {env_path}")
+    update_oauth_env_file(
+        env_path=env_path,
+        refresh_token=refresh_token,
+        provider="kakao"
+    )
 
 
 def ensure_valid_kakao_token(
@@ -466,67 +639,11 @@ def ensure_valid_kakao_token(
     Returns:
         str: 유효한 JWT 토큰, 실패 시 None
     """
-    # .env 파일 경로 설정
-    if env_path is None:
-        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-    
-    # .env 파일 로드
-    load_dotenv(env_path)
-    
-    # 백엔드 기본 URL 설정
-    if backend_base_url is None:
-        backend_base_url = os.getenv("BACKEND_BASE_URL")
-        if not backend_base_url:
-            log.error("BACKEND_BASE_URL이 .env 파일에 설정되어 있지 않습니다.")
-            return None
-    
-    # Kakao 토큰 정보 로드 (값에 '=' 기호가 포함될 수 있으므로 직접 파싱)
-    access_token = get_env_value(env_path, "KAKAO_ACCESS_TOKEN")
-    refresh_token = get_env_value(env_path, "KAKAO_REFRESH_TOKEN")
-    
-    if not access_token:
-        log.error("KAKAO_ACCESS_TOKEN이 .env 파일에 설정되어 있지 않습니다.")
-        return None
-    
-    # 기존 AccessToken으로 검증
-    is_valid, response_data = validate_kakao_token(
+    return ensure_valid_oauth_token(
+        provider="kakao",
         backend_base_url=backend_base_url,
-        access_token=access_token,
+        env_path=env_path
     )
-    
-    if is_valid and response_data:
-        token = response_data.get("token")
-        if token:
-            log.info("기존 Kakao 토큰이 유효합니다.")
-            return token
-    
-    # 토큰이 유효하지 않으면 RefreshToken으로 갱신 시도
-    if not refresh_token:
-        log.error("KAKAO_REFRESH_TOKEN이 .env 파일에 설정되어 있지 않습니다.")
-        return None
-    
-    log.info("Kakao 토큰이 유효하지 않습니다. RefreshToken으로 갱신합니다.")
-    refresh_response = refresh_kakao_token(
-        backend_base_url=backend_base_url,
-        refresh_token=refresh_token,
-    )
-    
-    if not refresh_response:
-        log.error("Kakao 토큰 갱신에 실패했습니다.")
-        return None
-    
-    # 갱신된 토큰 정보 추출
-    new_token = refresh_response.get("token")
-    new_refresh_token = refresh_response.get("refreshToken")
-    
-    if new_token:
-        if new_refresh_token:
-            update_kakao_env_file(env_path, refresh_token=new_refresh_token)
-        log.info("Kakao 토큰 갱신 및 JWT 토큰 발급 완료")
-        return new_token
-    
-    log.error("갱신된 응답에 JWT 토큰이 없습니다.")
-    return None
 
 
 # ============================================================================
@@ -550,27 +667,12 @@ def validate_naver_token(
         - is_valid: 토큰이 유효하면 True, 아니면 False
         - response_data: {"token": str, "user": dict} 형식의 응답 데이터, 실패 시 None
     """
-    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "accessToken": access_token
-    }
-    
-    log.info(f"Naver 토큰 유효성 검증: {url}")
-    
-    response = requests.post(url, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        data = response.json()
-        log.info("Naver 토큰이 유효합니다.")
-        return True, data
-    else:
-        log.warning(f"Naver 토큰 검증 실패: {response.status_code} - {response.text}")
-        return False, None
+    return validate_oauth_token(
+        backend_base_url=backend_base_url,
+        access_token=access_token,
+        provider="naver",
+        endpoint=endpoint
+    )
 
 
 def refresh_naver_token(
@@ -589,27 +691,12 @@ def refresh_naver_token(
     Returns:
         dict: {"token": str, "refreshToken": str, "user": dict} 형식의 응답 데이터, 실패 시 None
     """
-    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "refreshToken": refresh_token
-    }
-    
-    log.info(f"Naver 토큰 갱신 요청: {url}")
-    
-    response = requests.post(url, json=payload, headers=headers)
-    
-    if response.status_code == 200:
-        data = response.json()
-        log.info("Naver 토큰 갱신 성공")
-        return data
-    else:
-        log.error(f"Naver 토큰 갱신 실패: {response.status_code} - {response.text}")
-        return None
+    return refresh_oauth_token(
+        backend_base_url=backend_base_url,
+        refresh_token=refresh_token,
+        provider="naver",
+        endpoint=endpoint
+    )
 
 
 def update_naver_env_file(
@@ -624,31 +711,11 @@ def update_naver_env_file(
         env_path: .env 파일 경로
         refresh_token: Naver RefreshToken (갱신된 경우)
     """
-    if not env_path.exists():
-        log.error(f".env 파일을 찾을 수 없습니다: {env_path}")
-        return
-    
-    if not refresh_token:
-        return
-    
-    # .env 파일 읽기
-    with open(env_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    # Naver RefreshToken 업데이트
-    refresh_token_pattern = r"^NAVER_REFRESH_TOKEN=.*$"
-    refresh_token_replacement = f"NAVER_REFRESH_TOKEN={refresh_token}"
-    
-    if re.search(refresh_token_pattern, content, re.MULTILINE):
-        content = re.sub(refresh_token_pattern, refresh_token_replacement, content, flags=re.MULTILINE)
-    else:
-        content += f"\nNAVER_REFRESH_TOKEN={refresh_token}\n"
-    
-    # .env 파일 쓰기
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.write(content)
-    
-    log.info(f".env 파일 업데이트 완료: {env_path}")
+    update_oauth_env_file(
+        env_path=env_path,
+        refresh_token=refresh_token,
+        provider="naver"
+    )
 
 
 def ensure_valid_naver_token(
@@ -665,67 +732,11 @@ def ensure_valid_naver_token(
     Returns:
         str: 유효한 JWT 토큰, 실패 시 None
     """
-    # .env 파일 경로 설정
-    if env_path is None:
-        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-    
-    # .env 파일 로드
-    load_dotenv(env_path)
-    
-    # 백엔드 기본 URL 설정
-    if backend_base_url is None:
-        backend_base_url = os.getenv("BACKEND_BASE_URL")
-        if not backend_base_url:
-            log.error("BACKEND_BASE_URL이 .env 파일에 설정되어 있지 않습니다.")
-            return None
-    
-    # Naver 토큰 정보 로드 (값에 '=' 기호가 포함될 수 있으므로 직접 파싱)
-    access_token = get_env_value(env_path, "NAVER_ACCESS_TOKEN")
-    refresh_token = get_env_value(env_path, "NAVER_REFRESH_TOKEN")
-    
-    if not access_token:
-        log.error("NAVER_ACCESS_TOKEN이 .env 파일에 설정되어 있지 않습니다.")
-        return None
-    
-    # 기존 AccessToken으로 검증
-    is_valid, response_data = validate_naver_token(
+    return ensure_valid_oauth_token(
+        provider="naver",
         backend_base_url=backend_base_url,
-        access_token=access_token,
+        env_path=env_path
     )
-    
-    if is_valid and response_data:
-        token = response_data.get("token")
-        if token:
-            log.info("기존 Naver 토큰이 유효합니다.")
-            return token
-    
-    # 토큰이 유효하지 않으면 RefreshToken으로 갱신 시도
-    if not refresh_token:
-        log.error("NAVER_REFRESH_TOKEN이 .env 파일에 설정되어 있지 않습니다.")
-        return None
-    
-    log.info("Naver 토큰이 유효하지 않습니다. RefreshToken으로 갱신합니다.")
-    refresh_response = refresh_naver_token(
-        backend_base_url=backend_base_url,
-        refresh_token=refresh_token,
-    )
-    
-    if not refresh_response:
-        log.error("Naver 토큰 갱신에 실패했습니다.")
-        return None
-    
-    # 갱신된 토큰 정보 추출
-    new_token = refresh_response.get("token")
-    new_refresh_token = refresh_response.get("refreshToken")
-    
-    if new_token:
-        if new_refresh_token:
-            update_naver_env_file(env_path, refresh_token=new_refresh_token)
-        log.info("Naver 토큰 갱신 및 JWT 토큰 발급 완료")
-        return new_token
-    
-    log.error("갱신된 응답에 JWT 토큰이 없습니다.")
-    return None
 
 
 # ============================================================================

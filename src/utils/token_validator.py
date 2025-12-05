@@ -13,9 +13,7 @@ from dotenv import load_dotenv
 log = logging.getLogger(__name__)
 
 
-# ============================================================================
 # Utility Functions
-# ============================================================================
 def get_env_value(env_path: Path, key: str) -> Optional[str]:
     """
     .env 파일에서 환경 변수 값을 읽어옴
@@ -53,9 +51,7 @@ def get_env_value(env_path: Path, key: str) -> Optional[str]:
     return None
 
 
-# ============================================================================
 # JWT Token Functions
-# ============================================================================
 def get_jwt_token(
     backend_base_url: str,
     user_id: int,
@@ -330,9 +326,7 @@ def ensure_valid_jwt_token(
     return response_data["token"]
 
 
-# ============================================================================
 # OAuth Token Functions (Common)
-# ============================================================================
 def validate_oauth_token(
     backend_base_url: str,
     access_token: str,
@@ -553,9 +547,7 @@ def ensure_valid_oauth_token(
     return None
 
 
-# ============================================================================
 # Kakao Token Functions
-# ============================================================================
 def validate_kakao_token(
     backend_base_url: str,
     access_token: str,
@@ -646,9 +638,7 @@ def ensure_valid_kakao_token(
     )
 
 
-# ============================================================================
 # Naver Token Functions
-# ============================================================================
 def validate_naver_token(
     backend_base_url: str,
     access_token: str,
@@ -739,9 +729,7 @@ def ensure_valid_naver_token(
     )
 
 
-# ============================================================================
 # Main Script
-# ============================================================================
 if __name__ == "__main__":
     """스크립트로 직접 실행할 때 사용"""
     parser = argparse.ArgumentParser(description="토큰 유효성을 확인하고 필요시 갱신합니다.")

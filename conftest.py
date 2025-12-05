@@ -26,9 +26,7 @@ env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(env_path)
 
 
-# ============================================================================
 # Utility Functions
-# ============================================================================
 def get_timestamp():
     """
     현재 시간을 타임스탬프 형식으로 반환
@@ -55,9 +53,7 @@ def get_result_base_dir():
     return result_dir
 
 
-# ============================================================================
 # Health Check (전체 테스트 시작 전 서버 상태 확인)
-# ============================================================================
 def _check_backend_health() -> bool:
     """
     백엔드 Health Check: GET {BACKEND_BASE_URL}/health
@@ -133,9 +129,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:  # type: ignore[overri
     log.info("[HEALTH] 서버 헬스 체크 통과. 테스트를 계속 진행합니다.")
 
 
-# ============================================================================
 # JWT Token Fixtures
-# ============================================================================
 @pytest.fixture(scope="session")
 def jwt_token(api_base_url):
     """
@@ -182,9 +176,7 @@ def jwt_token(api_base_url):
     return token
 
 
-# ============================================================================
 # API Fixtures
-# ============================================================================
 @pytest.fixture(scope="session")
 def api_base_url():
     """
@@ -212,9 +204,7 @@ def api_client(api_base_url):
     return BaseAPI(base_url=api_base_url)
 
 
-# ============================================================================
 # Web Fixtures
-# ============================================================================
 @pytest.fixture(scope="session")
 def web_base_url():
     """
@@ -240,6 +230,38 @@ def login_mode(request):
       처럼 지정하면 해당 값이 들어옴.
     """
     return getattr(request, "param", "")
+
+
+def _setup_page_with_token(context, page, jwt_token, login_mode_name=""):
+    """
+    페이지에 JWT 토큰을 설정하는 헬퍼 함수
+    
+    Args:
+        context: Playwright 브라우저 컨텍스트
+        page: Playwright 페이지 인스턴스
+        jwt_token: JWT 토큰 문자열
+        login_mode_name: 로그인 모드 이름 (로그용, 기본값: "")
+    """
+    # localStorage에 JWT 토큰 주입
+    context.add_init_script(
+        f'window.localStorage.setItem("token", "{jwt_token}");'
+    )
+    mode_text = f"{login_mode_name} " if login_mode_name else ""
+    log.info(f"{mode_text}JWT 토큰이 localStorage에 주입됨")
+    
+    # 모든 API 요청에 Authorization 헤더 추가
+    def handle_route(route):
+        log.debug(f"Route intercepted: {route.request.url}")
+        headers = route.request.headers.copy()
+        headers["Authorization"] = f"Bearer {jwt_token}"
+        route.continue_(headers=headers)
+    
+    web_base_url = os.getenv("WEB_BASE_URL", "")
+    page.route("**/api/**", handle_route)
+    page.route("**/auth/**", handle_route)
+    if web_base_url:
+        page.route(f"{web_base_url}/**", handle_route)
+    log.info(f"{mode_text}JWT 토큰이 네트워크 요청에 자동 추가됨")
 
 
 @pytest.fixture(scope="function")
@@ -277,28 +299,8 @@ def web_page(request, login_mode):
                 browser.close()
                 return
             
-            # localStorage에 JWT 토큰 주입
-            context.add_init_script(
-                f'window.localStorage.setItem("token", "{jwt_token}");'
-            )
-            log.info("Kakao JWT 토큰이 localStorage에 주입됨")
-            
             page = context.new_page()
-            
-            # 모든 API 요청에 Authorization 헤더 추가
-            def handle_route(route):
-                log.debug(f"Route intercepted: {route.request.url}")
-                headers = route.request.headers.copy()
-                headers["Authorization"] = f"Bearer {jwt_token}"
-                route.continue_(headers=headers)
-            
-            web_base_url = os.getenv("WEB_BASE_URL", "")
-            page.route("**/api/**", handle_route)
-            page.route("**/auth/**", handle_route)
-            if web_base_url:
-                page.route(f"{web_base_url}/**", handle_route)
-            log.info("Kakao JWT 토큰이 네트워크 요청에 자동 추가됨")
-            
+            _setup_page_with_token(context, page, jwt_token, "Kakao")
             yield page
             context.close()
             browser.close()
@@ -316,28 +318,8 @@ def web_page(request, login_mode):
                 browser.close()
                 return
             
-            # localStorage에 JWT 토큰 주입
-            context.add_init_script(
-                f'window.localStorage.setItem("token", "{jwt_token}");'
-            )
-            log.info("Naver JWT 토큰이 localStorage에 주입됨")
-            
             page = context.new_page()
-            
-            # 모든 API 요청에 Authorization 헤더 추가
-            def handle_route(route):
-                log.debug(f"Route intercepted: {route.request.url}")
-                headers = route.request.headers.copy()
-                headers["Authorization"] = f"Bearer {jwt_token}"
-                route.continue_(headers=headers)
-            
-            web_base_url = os.getenv("WEB_BASE_URL", "")
-            page.route("**/api/**", handle_route)
-            page.route("**/auth/**", handle_route)
-            if web_base_url:
-                page.route(f"{web_base_url}/**", handle_route)
-            log.info("Naver JWT 토큰이 네트워크 요청에 자동 추가됨")
-            
+            _setup_page_with_token(context, page, jwt_token, "Naver")
             yield page
             context.close()
             browser.close()
@@ -345,28 +327,8 @@ def web_page(request, login_mode):
 
         # 기본 모드: JWT를 localStorage/Authorization 헤더에 주입
         jwt_token = request.getfixturevalue("jwt_token")
-
-        # localStorage에 JWT 토큰 주입
-        context.add_init_script(
-            f'window.localStorage.setItem("token", "{jwt_token}");'
-        )
-        log.info("JWT 토큰이 localStorage에 주입됨")
-
         page = context.new_page()
-
-        # 모든 API 요청에 Authorization 헤더 추가
-        def handle_route(route):
-            log.debug(f"Route intercepted: {route.request.url}")
-            headers = route.request.headers.copy()
-            headers["Authorization"] = f"Bearer {jwt_token}"
-            route.continue_(headers=headers)
-
-        web_base_url = os.getenv("WEB_BASE_URL", "")
-        page.route("**/api/**", handle_route)
-        page.route("**/auth/**", handle_route)
-        if web_base_url:
-            page.route(f"{web_base_url}/**", handle_route)
-        log.info("JWT 토큰이 네트워크 요청에 자동 추가됨")
+        _setup_page_with_token(context, page, jwt_token)
 
         yield page
         context.close()
@@ -395,9 +357,7 @@ def todo_page(web_page, web_base_url):
     return TodoActions(web_page)
 
 
-# ============================================================================
 # Pytest Configuration Hooks
-# ============================================================================
 def pytest_configure(config):
     """
     pytest 실행 시 HTML 리포트 자동 생성

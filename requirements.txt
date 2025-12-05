@@ -1,7 +1,6 @@
 # Testing Framework
 pytest>=8.4.2
 pytest-html>=4.1.1
-pytest-xdist>=3.8.0
 pytest-check>=2.2.2
 
 # API Testing
@@ -12,9 +11,6 @@ playwright>=1.55.0
 
 # Environment Variables
 python-dotenv>=1.2.1
-
-# JWT
-PyJWT>=2.8.0
 
 # Code Quality
 flake8>=7.1.1

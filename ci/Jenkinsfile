@@ -2,37 +2,65 @@ pipeline {
     agent { label 'linux_02' }
 
     environment {
-        WORKSPACE_DIR = '/home/ubuntu/todolist_test'
-        RESULT_DIR    = '/home/ubuntu/todolist_test/Result'
+        WORKSPACE_DIR = "${env.WORKSPACE}"
+        RESULT_DIR    = "${env.WORKSPACE}/Result"
+        VENV_PATH     = "${env.WORKSPACE}/venv"
+        PYTHON        = "${env.WORKSPACE}/venv/bin/python"
+        PIP           = "${env.WORKSPACE}/venv/bin/pip"
+        PLAYWRIGHT    = "${env.WORKSPACE}/venv/bin/playwright"
     }
 
     stages {
+
+        stage('Setup Python Environment') {
+            steps {
+                script {
+                    dir(env.WORKSPACE_DIR) {
+
+                        sh '''
+                            echo "🐍 Python 가상환경 자동 생성..."
+
+                            # Python venv 생성
+                            python3 -m venv venv
+
+                            echo "📦 pip 업그레이드..."
+                            venv/bin/pip install --upgrade pip
+
+                            echo "📦 requirements.txt 설치..."
+                            venv/bin/pip install -r requirements.txt
+
+                            echo "🎭 Playwright 설치..."
+                            venv/bin/playwright install chromium
+                        '''
+                    }
+                }
+            }
+        }
 
         stage('Run Tests') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
 
-                        withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {
+                        withCredentials([
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')
+                        ]) {
 
                             sh '''
-                                ###############################################
-                                # 🔐 민감 정보 보호: Jenkins 명령 echo 중단
-                                ###############################################
+                                ###################################################
+                                # 🔐 환경 변수 로딩 (민감정보 echo 방지)
+                                ###################################################
                                 set +x
-
                                 echo "📌 환경 변수 로딩 시작..."
 
                                 set -a
                                 while IFS= read -r line || [ -n "$line" ]; do
                                     trimmed=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-                                    # 빈 줄 또는 주석 제외
                                     if [ -z "$trimmed" ] || [ "$(printf %.1s "$trimmed")" = "#" ]; then
                                         continue
                                     fi
 
-                                    # KEY=VALUE 형태만 처리
                                     if echo "$trimmed" | grep -q "="; then
                                         key=$(echo "$trimmed" | cut -d '=' -f 1)
                                         value=$(echo "$trimmed" | cut -d '=' -f 2-)
@@ -41,29 +69,13 @@ pipeline {
                                 done < "$ENV_FILE"
                                 set +a
 
-                                ###############################################
-                                # 🔐 민감 정보 출력 방지 완료 → Jenkins echo 다시 켜기
-                                ###############################################
+                                echo "🔐 환경 변수 로딩 완료!"
                                 set -x
 
-                                echo "🔑 환경 변수 안전하게 주입 완료!"
-
-                                ###############################################
-                                # ▶ Playwright 브라우저 자동 설치 (중요)
-                                ###############################################
-                                todolist_test/bin/playwright install chromium
-
-                                ###############################################
-                                # ▶ .env 파일 갱신 방지를 위한 환경 변수 설정
-                                #   테스트 코드의 update_oauth_env_file() 가 쓰기 금지되도록 유도
-                                ###############################################
-                                export DISABLE_ENV_WRITE=true
-                                echo "🛑 테스트 중 .env 파일은 덮어쓰기 금지됨."
-
-                                ###############################################
+                                ###################################################
                                 # ▶ 테스트 실행
-                                ###############################################
-                                todolist_test/bin/python -m pytest || true
+                                ###################################################
+                                ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
                             '''
                         }
                     }
@@ -71,35 +83,12 @@ pipeline {
             }
         }
 
-        stage('Copy Test Report') {
+        stage('Archive Test Report') {
             steps {
                 script {
-                    dir(env.WORKSPACE_DIR) {
-                        sh '''
-                            echo "📄 최신 테스트 리포트 찾는 중..."
+                    echo "📄 HTML 테스트 리포트를 저장합니다..."
 
-                            LATEST_DIR=$(ls -td ${RESULT_DIR}/*/ 2>/dev/null | head -1)
-
-                            if [ -z "$LATEST_DIR" ]; then
-                                echo "⚠️ 결과 폴더가 없습니다."
-                                exit 0
-                            fi
-
-                            echo "📁 최신 폴더: $LATEST_DIR"
-
-                            HTML_FILE=$(find "$LATEST_DIR" -name "*.html" -type f | head -1)
-
-                            if [ -z "$HTML_FILE" ]; then
-                                echo "⚠️ HTML 리포트가 없습니다."
-                                exit 0
-                            fi
-
-                            FILENAME=$(basename "$HTML_FILE")
-                            cp "$HTML_FILE" "${WORKSPACE_DIR}/Linux_${FILENAME}"
-
-                            echo "✅ 리포트 복사 완료 → Linux_${FILENAME}"
-                        '''
-                    }
+                    archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
                 }
             }
         }
@@ -108,9 +97,7 @@ pipeline {
     post {
         always {
             script {
-                dir(env.WORKSPACE_DIR) {
-                    echo "🎉 테스트 실행 및 리포트 처리 완료!"
-                }
+                echo "🎉 전체 파이프라인 완료!"
             }
         }
     }

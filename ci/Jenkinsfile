@@ -2,43 +2,47 @@ pipeline {
     agent {
         label 'linux_02'
     }
-    
+
     environment {
         WORKSPACE_DIR = '/home/ubuntu/todolist_test'
-        RESULT_DIR = '/home/ubuntu/todolist_test/Result'
+        RESULT_DIR    = '/home/ubuntu/todolist_test/Result'
     }
-    
+
     stages {
+
         stage('Run Tests') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
-                        // Jenkins credential에서 환경 변수 주입
+
+                        // Jenkins Credential에서 테스트용 env 파일 주입
                         withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {
                             sh '''
-                                # credential 파일에서 환경 변수 읽어서 export
+                                echo "📌 환경 변수 로딩 시작..."
+
                                 set -a
                                 while IFS= read -r line || [ -n "$line" ]; do
-                                    # 주석이나 빈 줄 건너뛰기
-                                    case "$line" in
-                                        \#*|"")
-                                            continue
-                                            ;;
-                                    esac
-                                    # KEY=VALUE 형식인 경우 export
-                                    case "$line" in
-                                        *=*)
-                                            export "${line}"
-                                            ;;
-                                    esac
+                                    # 앞뒤 공백 제거
+                                    trimmed=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+                                    # 빈 줄, 주석 제외
+                                    if [ -z "$trimmed" ] || [ "$(printf %.1s "$trimmed")" = "#" ]; then
+                                        continue
+                                    fi
+
+                                    # KEY=VALUE 형식만 처리
+                                    if echo "$trimmed" | grep -q "="; then
+                                        key=$(echo "$trimmed" | cut -d '=' -f 1)
+                                        value=$(echo "$trimmed" | cut -d '=' -f 2-)
+                                        export "$key=$value"
+                                    fi
                                 done < "$ENV_FILE"
                                 set +a
-                                
-                                # 환경 변수 주입 확인 (민감 정보는 마스킹)
-                                echo "환경 변수가 주입되었습니다."
-                                env | grep -E "^(WEB_BASE_URL|BACKEND_BASE_URL|KAKAO_|NAVER_|JWT_)" | sed 's/=.*/=***/' | head -5
-                                
-                                # 가상환경의 python을 직접 사용하여 테스트 실행
+
+                                echo "🔑 환경 변수 주입 완료!"
+                                env | grep -E "^(WEB_BASE_URL|BACKEND_BASE_URL|KAKAO_|NAVER_|JWT_)" | sed 's/=.*/=***/'
+
+                                echo "🐍 Python 테스트 실행..."
                                 todolist_test/bin/python -m pytest || true
                             '''
                         }
@@ -46,54 +50,53 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Copy Test Report') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
                         sh '''
-                            # Result 디렉토리에서 가장 최신 폴더 찾기
+                            echo "📄 최신 테스트 리포트 찾는 중..."
+
+                            # 최신 리포트 폴더 찾기
                             LATEST_DIR=$(ls -td ${RESULT_DIR}/*/ 2>/dev/null | head -1)
-                            
+
                             if [ -z "$LATEST_DIR" ]; then
-                                echo "경고: Result 디렉토리에서 폴더를 찾을 수 없습니다."
+                                echo "⚠️ Result 디렉토리에서 폴더를 찾을 수 없습니다."
                                 exit 0
                             fi
-                            
-                            echo "가장 최신 폴더: $LATEST_DIR"
-                            
-                            # .html 파일 찾기 및 복사
+
+                            echo "📁 최신 폴더: $LATEST_DIR"
+
+                            # HTML 리포트 찾기
                             HTML_FILE=$(find "$LATEST_DIR" -name "*.html" -type f | head -1)
-                            
+
                             if [ -z "$HTML_FILE" ]; then
-                                echo "경고: HTML 파일을 찾을 수 없습니다."
+                                echo "⚠️ HTML 파일을 찾을 수 없습니다."
                                 exit 0
                             fi
-                            
-                            echo "HTML 파일 발견: $HTML_FILE"
-                            
-                            # 파일명 추출
+
+                            echo "🔍 HTML 파일: $HTML_FILE"
+
                             FILENAME=$(basename "$HTML_FILE")
-                            
-                            # Linux_ prefix를 붙여서 현재 디렉토리에 복사
+
                             cp "$HTML_FILE" "${WORKSPACE_DIR}/Linux_${FILENAME}"
-                            
-                            echo "파일이 복사되었습니다: Linux_${FILENAME}"
+
+                            echo "✅ 리포트 복사 완료 → Linux_${FILENAME}"
                         '''
                     }
                 }
             }
         }
     }
-    
+
     post {
         always {
             script {
                 dir(env.WORKSPACE_DIR) {
-                    echo "테스트 실행이 완료되었습니다."
+                    echo "🎉 테스트 실행 및 리포트 처리 완료!"
                 }
             }
         }
     }
 }
-

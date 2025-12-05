@@ -17,6 +17,23 @@ pipeline {
                         // Jenkins credential에서 .env 파일을 프로젝트 루트에 생성
                         withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {
                             sh '''
+                                # 디렉토리 존재 확인 및 권한 확인
+                                if [ ! -d "${WORKSPACE_DIR}" ]; then
+                                    echo "디렉토리가 존재하지 않습니다. 생성 시도: ${WORKSPACE_DIR}"
+                                    mkdir -p "${WORKSPACE_DIR}" || {
+                                        echo "오류: 디렉토리 생성에 실패했습니다."
+                                        exit 1
+                                    }
+                                fi
+                                
+                                # 디렉토리 쓰기 권한 확인
+                                if [ ! -w "${WORKSPACE_DIR}" ]; then
+                                    echo "오류: ${WORKSPACE_DIR} 디렉토리에 쓰기 권한이 없습니다."
+                                    echo "현재 사용자: $(whoami)"
+                                    echo "디렉토리 권한: $(ls -ld "${WORKSPACE_DIR}")"
+                                    exit 1
+                                fi
+                                
                                 # .env 파일을 프로젝트 루트에 생성
                                 cp "$ENV_FILE" .env
                                 

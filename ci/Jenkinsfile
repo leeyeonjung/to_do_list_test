@@ -9,62 +9,35 @@ pipeline {
     }
     
     stages {
-        stage('Setup Environment') {
-            steps {
-                script {
-                    // 프로젝트 루트 디렉토리로 이동 (/home/ubuntu/todolist_test)
-                    dir(env.WORKSPACE_DIR) {
-                        // Jenkins credential에서 .env 파일을 프로젝트 루트에 생성
-                        withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {
-                            sh '''
-                                # 디렉토리 존재 확인 및 권한 확인
-                                if [ ! -d "${WORKSPACE_DIR}" ]; then
-                                    echo "디렉토리가 존재하지 않습니다. 생성 시도: ${WORKSPACE_DIR}"
-                                    mkdir -p "${WORKSPACE_DIR}" || {
-                                        echo "오류: 디렉토리 생성에 실패했습니다."
-                                        exit 1
-                                    }
-                                fi
-                                
-                                # 디렉토리 쓰기 권한 확인
-                                if [ ! -w "${WORKSPACE_DIR}" ]; then
-                                    echo "오류: ${WORKSPACE_DIR} 디렉토리에 쓰기 권한이 없습니다."
-                                    echo "현재 사용자: $(whoami)"
-                                    echo "디렉토리 권한: $(ls -ld "${WORKSPACE_DIR}")"
-                                    exit 1
-                                fi
-                                
-                                # .env 파일을 프로젝트 루트에 생성
-                                cp "$ENV_FILE" .env
-                                
-                                # .env 파일 생성 확인
-                                if [ ! -f .env ]; then
-                                    echo "오류: .env 파일 생성에 실패했습니다."
-                                    exit 1
-                                fi
-                                
-                                # .env 파일 경로 출력
-                                ENV_PATH=$(pwd)/.env
-                                echo ".env 파일이 생성되었습니다: $ENV_PATH"
-                                
-                                # .env 파일 내용 확인 (민감 정보는 마스킹)
-                                echo ".env 파일의 주요 설정 확인:"
-                                grep -E "^[A-Z_]+=" .env | sed 's/=.*/=***/' | head -5
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-        
         stage('Run Tests') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
-                        sh '''
-                            # 가상환경의 python을 직접 사용하여 테스트 실행
-                            todolist_test/bin/python -m pytest || true
-                        '''
+                        // Jenkins credential에서 환경 변수 주입
+                        withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {
+                            sh '''
+                                # credential 파일에서 환경 변수 읽어서 export
+                                set -a
+                                while IFS= read -r line || [ -n "$line" ]; do
+                                    # 주석이나 빈 줄 건너뛰기
+                                    if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
+                                        continue
+                                    fi
+                                    # KEY=VALUE 형식인 경우 export
+                                    if [[ "$line" =~ ^([^=]+)=(.*)$ ]]; then
+                                        export "${line}"
+                                    fi
+                                done < "$ENV_FILE"
+                                set +a
+                                
+                                # 환경 변수 주입 확인 (민감 정보는 마스킹)
+                                echo "환경 변수가 주입되었습니다."
+                                env | grep -E "^(WEB_BASE_URL|BACKEND_BASE_URL|KAKAO_|NAVER_|JWT_)" | sed 's/=.*/=***/' | head -5
+                                
+                                # 가상환경의 python을 직접 사용하여 테스트 실행
+                                todolist_test/bin/python -m pytest || true
+                            '''
+                        }
                     }
                 }
             }

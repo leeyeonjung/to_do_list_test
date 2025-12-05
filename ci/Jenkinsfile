@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-        label 'linux_02'
-    }
+    agent { label 'linux_02' }
 
     environment {
         WORKSPACE_DIR = '/home/ubuntu/todolist_test'
@@ -15,22 +13,26 @@ pipeline {
                 script {
                     dir(env.WORKSPACE_DIR) {
 
-                        // Jenkins Credential에서 테스트용 env 파일 주입
                         withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {
+
                             sh '''
+                                ###############################################
+                                # 🔐 민감 정보 보호: Jenkins 명령 echo 중단
+                                ###############################################
+                                set +x
+
                                 echo "📌 환경 변수 로딩 시작..."
 
                                 set -a
                                 while IFS= read -r line || [ -n "$line" ]; do
-                                    # 앞뒤 공백 제거
                                     trimmed=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-                                    # 빈 줄, 주석 제외
+                                    # 빈 줄 또는 주석 제외
                                     if [ -z "$trimmed" ] || [ "$(printf %.1s "$trimmed")" = "#" ]; then
                                         continue
                                     fi
 
-                                    # KEY=VALUE 형식만 처리
+                                    # KEY=VALUE 형태만 처리
                                     if echo "$trimmed" | grep -q "="; then
                                         key=$(echo "$trimmed" | cut -d '=' -f 1)
                                         value=$(echo "$trimmed" | cut -d '=' -f 2-)
@@ -39,10 +41,28 @@ pipeline {
                                 done < "$ENV_FILE"
                                 set +a
 
-                                echo "🔑 환경 변수 주입 완료!"
-                                env | grep -E "^(WEB_BASE_URL|BACKEND_BASE_URL|KAKAO_|NAVER_|JWT_)" | sed 's/=.*/=***/'
+                                ###############################################
+                                # 🔐 민감 정보 출력 방지 완료 → Jenkins echo 다시 켜기
+                                ###############################################
+                                set -x
 
-                                echo "🐍 Python 테스트 실행..."
+                                echo "🔑 환경 변수 안전하게 주입 완료!"
+
+                                ###############################################
+                                # ▶ Playwright 브라우저 자동 설치 (중요)
+                                ###############################################
+                                todolist_test/bin/playwright install chromium
+
+                                ###############################################
+                                # ▶ .env 파일 갱신 방지를 위한 환경 변수 설정
+                                #   테스트 코드의 update_oauth_env_file() 가 쓰기 금지되도록 유도
+                                ###############################################
+                                export DISABLE_ENV_WRITE=true
+                                echo "🛑 테스트 중 .env 파일은 덮어쓰기 금지됨."
+
+                                ###############################################
+                                # ▶ 테스트 실행
+                                ###############################################
                                 todolist_test/bin/python -m pytest || true
                             '''
                         }
@@ -58,28 +78,23 @@ pipeline {
                         sh '''
                             echo "📄 최신 테스트 리포트 찾는 중..."
 
-                            # 최신 리포트 폴더 찾기
                             LATEST_DIR=$(ls -td ${RESULT_DIR}/*/ 2>/dev/null | head -1)
 
                             if [ -z "$LATEST_DIR" ]; then
-                                echo "⚠️ Result 디렉토리에서 폴더를 찾을 수 없습니다."
+                                echo "⚠️ 결과 폴더가 없습니다."
                                 exit 0
                             fi
 
                             echo "📁 최신 폴더: $LATEST_DIR"
 
-                            # HTML 리포트 찾기
                             HTML_FILE=$(find "$LATEST_DIR" -name "*.html" -type f | head -1)
 
                             if [ -z "$HTML_FILE" ]; then
-                                echo "⚠️ HTML 파일을 찾을 수 없습니다."
+                                echo "⚠️ HTML 리포트가 없습니다."
                                 exit 0
                             fi
 
-                            echo "🔍 HTML 파일: $HTML_FILE"
-
                             FILENAME=$(basename "$HTML_FILE")
-
                             cp "$HTML_FILE" "${WORKSPACE_DIR}/Linux_${FILENAME}"
 
                             echo "✅ 리포트 복사 완료 → Linux_${FILENAME}"

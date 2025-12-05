@@ -4,7 +4,7 @@ pipeline {
     }
     
     environment {
-        WORKSPACE_DIR = '/home/ubuntu/to_do_list_test'
+        WORKSPACE_DIR = '/home/ubuntu/todolist_test'
         RESULT_DIR = '/home/ubuntu/todolist_test/Result'
     }
     
@@ -12,7 +12,7 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
-                    // 프로젝트 루트 디렉토리로 이동 (/home/ubuntu/to_do_list_test)
+                    // 프로젝트 루트 디렉토리로 이동 (/home/ubuntu/todolist_test)
                     dir(env.WORKSPACE_DIR) {
                         // Jenkins credential에서 .env 파일을 프로젝트 루트에 생성
                         withCredentials([file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')]) {

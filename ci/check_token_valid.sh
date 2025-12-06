@@ -30,29 +30,30 @@ JENKINS_USER="${JENKINS_USER}"
 JENKINS_PASS="${JENKINS_PASS}"
 JENKINS_DOMAIN="${JENKINS_DOMAIN:-todolist_dev}"
 
-# ENV_FILE 확인 (Jenkinsfile에서 주입되는 .env-dev-test 같은 파일)
-ENV_FILE="${ENV_FILE:-${WORKSPACE_DIR}/.env}"
-if [ ! -f "$ENV_FILE" ]; then
-    echo "⚠️  ENV_FILE not found: $ENV_FILE"
-    echo "   Creating temporary ENV_FILE with environment variables"
-    ENV_FILE="${WORKSPACE_DIR}/.env.tmp"
-    touch "$ENV_FILE"
+# 환경 변수에서 토큰을 임시 ENV_FILE로 생성 (token_validator.py가 ENV_FILE 형식을 요구함)
+WORKING_ENV_FILE="${WORKSPACE_DIR}/.env.working"
+echo "=== 1.5. Creating temporary ENV_FILE from environment variables ==="
+
+# 원본 ENV_FILE이 있으면 먼저 복사 (다른 설정값들 유지)
+if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
+    cp "$ENV_FILE" "$WORKING_ENV_FILE"
+    echo "   Copied base ENV_FILE: $ENV_FILE"
+else
+    touch "$WORKING_ENV_FILE"
 fi
 
-# 환경 변수의 토큰을 ENV_FILE에 추가 (없는 경우만)
-if [ -f "$ENV_FILE" ]; then
-    echo "=== 1.5. Syncing tokens to ENV_FILE ==="
-    # ENV_FILE에 토큰이 없으면 환경 변수에서 추가
-    for token_name in "KAKAO_ACCESS_TOKEN" "KAKAO_REFRESH_TOKEN" "NAVER_ACCESS_TOKEN" "NAVER_REFRESH_TOKEN" "BACKEND_BASE_URL"; do
-        if ! grep -q "^${token_name}=" "$ENV_FILE" 2>/dev/null; then
-            token_value=$(eval echo \$${token_name})
-            if [ -n "$token_value" ]; then
-                echo "${token_name}=${token_value}" >> "$ENV_FILE"
-                echo "   Added ${token_name} to ENV_FILE"
-            fi
-        fi
-    done
-fi
+# 환경 변수의 토큰을 WORKING_ENV_FILE에 추가/업데이트
+for token_name in "KAKAO_ACCESS_TOKEN" "KAKAO_REFRESH_TOKEN" "NAVER_ACCESS_TOKEN" "NAVER_REFRESH_TOKEN" "BACKEND_BASE_URL"; do
+    token_value=$(eval echo \$${token_name})
+    if [ -n "$token_value" ]; then
+        # 기존 값이 있으면 제거하고 새로 추가
+        sed -i "/^${token_name}=/d" "$WORKING_ENV_FILE" 2>/dev/null || true
+        echo "${token_name}=${token_value}" >> "$WORKING_ENV_FILE"
+    fi
+done
+
+# 작업용 ENV_FILE 사용
+ENV_FILE="$WORKING_ENV_FILE"
 
 # 네이버와 카카오 토큰 갱신
 echo "=== 2. Refreshing Tokens ==="
@@ -121,9 +122,9 @@ fi
 
 echo "✅ Token refresh process completed"
 
-# 임시 ENV_FILE 정리
-if [ -f "${WORKSPACE_DIR}/.env.tmp" ]; then
-    rm -f "${WORKSPACE_DIR}/.env.tmp"
+# 작업용 ENV_FILE 정리
+if [ -f "$WORKING_ENV_FILE" ]; then
+    rm -f "$WORKING_ENV_FILE"
 fi
 
 exit 0

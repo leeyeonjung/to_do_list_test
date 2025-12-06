@@ -38,7 +38,45 @@ pipeline {
         }
 
         /* =======================================
-           2. TEST 실행
+           2. 토큰 검증 및 갱신
+        ======================================= */
+        stage('Validate and Refresh Tokens') {
+            steps {
+                script {
+                    dir(env.WORKSPACE_DIR) {
+                        withCredentials([
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+                            
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',     variable: 'KAKAO_ACCESS_TOKEN'),
+                            string(credentialsId: 'KAKAO_REFRESH_TOKEN',    variable: 'KAKAO_REFRESH_TOKEN'),
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN',     variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN',    variable: 'NAVER_REFRESH_TOKEN'),
+                            string(credentialsId: 'WEB_TEST_JWT_TOKEN',     variable: 'WEB_TEST_JWT_TOKEN'),
+                            
+                            usernamePassword(credentialsId: 'jenkins-admin', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS')
+                        ]) {
+                            sh '''
+                                set +x
+                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
+                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
+                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
+                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
+                                export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
+                                export JENKINS_USER="${JENKINS_USER}"
+                                export JENKINS_PASS="${JENKINS_PASS}"
+                                export ENV_FILE="${ENV_FILE}"
+                                set -x
+                                
+                                bash ci/check_token_valid.sh
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        /* =======================================
+           3. TEST 실행
         ======================================= */
         stage('Run Tests') {
             steps {
@@ -111,7 +149,7 @@ pipeline {
         }
 
         /* =======================================
-           3. Report 저장
+           4. Report 저장
         ======================================= */
         stage('Archive Test Report') {
             steps {

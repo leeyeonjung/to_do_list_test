@@ -34,24 +34,34 @@ JENKINS_DOMAIN="${JENKINS_DOMAIN:-todolist_dev}"
 ENV_FILE="${ENV_FILE:-${WORKSPACE_DIR}/.env}"
 if [ ! -f "$ENV_FILE" ]; then
     echo "⚠️  ENV_FILE not found: $ENV_FILE"
-    echo "   Using environment variables directly"
-    ENV_FILE=""
+    echo "   Creating temporary ENV_FILE with environment variables"
+    ENV_FILE="${WORKSPACE_DIR}/.env.tmp"
+    touch "$ENV_FILE"
+fi
+
+# 환경 변수의 토큰을 ENV_FILE에 추가 (없는 경우만)
+if [ -f "$ENV_FILE" ]; then
+    echo "=== 1.5. Syncing tokens to ENV_FILE ==="
+    # ENV_FILE에 토큰이 없으면 환경 변수에서 추가
+    for token_name in "KAKAO_ACCESS_TOKEN" "KAKAO_REFRESH_TOKEN" "NAVER_ACCESS_TOKEN" "NAVER_REFRESH_TOKEN" "BACKEND_BASE_URL"; do
+        if ! grep -q "^${token_name}=" "$ENV_FILE" 2>/dev/null; then
+            token_value=$(eval echo \$${token_name})
+            if [ -n "$token_value" ]; then
+                echo "${token_name}=${token_value}" >> "$ENV_FILE"
+                echo "   Added ${token_name} to ENV_FILE"
+            fi
+        fi
+    done
 fi
 
 # 네이버와 카카오 토큰 갱신
 echo "=== 2. Refreshing Tokens ==="
 for provider in "naver" "kakao"; do
     echo "🔄 Refreshing ${provider} token..."
-    if [ -n "$ENV_FILE" ]; then
-        $PYTHON "${WORKSPACE_DIR}/src/utils/token_validator.py" \
-            --provider "${provider}" \
-            --backend-base-url "${BACKEND_BASE_URL}" \
-            --env-path "${ENV_FILE}" || true
-    else
-        $PYTHON "${WORKSPACE_DIR}/src/utils/token_validator.py" \
-            --provider "${provider}" \
-            --backend-base-url "${BACKEND_BASE_URL}" || true
-    fi
+    $PYTHON "${WORKSPACE_DIR}/src/utils/token_validator.py" \
+        --provider "${provider}" \
+        --backend-base-url "${BACKEND_BASE_URL}" \
+        --env-path "${ENV_FILE}" || true
 done
 
 # 갱신된 토큰 읽기
@@ -110,4 +120,10 @@ else
 fi
 
 echo "✅ Token refresh process completed"
+
+# 임시 ENV_FILE 정리
+if [ -f "${WORKSPACE_DIR}/.env.tmp" ]; then
+    rm -f "${WORKSPACE_DIR}/.env.tmp"
+fi
+
 exit 0

@@ -23,6 +23,7 @@ fi
 
 echo "🔴 Token INVALID → Refreshing tokens and updating Jenkins credentials..."
 
+
 # 환경 변수 설정
 export BACKEND_BASE_URL="${BACKEND_BASE_URL:-http://localhost:5000}"
 JENKINS_URL="${JENKINS_URL:-http://localhost:8080}"
@@ -30,32 +31,39 @@ JENKINS_USER="${JENKINS_USER}"
 JENKINS_PASS="${JENKINS_PASS}"
 JENKINS_DOMAIN="${JENKINS_DOMAIN:-todolist_dev}"
 
-# 환경 변수에서 토큰을 임시 ENV_FILE로 생성 (token_validator.py가 ENV_FILE 형식을 요구함)
-WORKING_ENV_FILE="${WORKSPACE_DIR}/.env.working"
-echo "=== 1.5. Creating temporary ENV_FILE from environment variables ==="
 
-# 원본 ENV_FILE이 있으면 먼저 복사 (다른 설정값들 유지)
+# ============================================================
+# 1.5 작업용 ENV_FILE 생성 (/tmp는 항상 쓰기 가능)
+# ============================================================
+
+WORKING_ENV_FILE="$(mktemp /tmp/env.XXXXXX)"
+echo "=== 1.5. Creating temporary ENV_FILE: $WORKING_ENV_FILE ==="
+
+# 원본 ENV_FILE이 있으면 복사 (백엔드 URL 등 다른 값 유지)
 if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
     cp "$ENV_FILE" "$WORKING_ENV_FILE"
     echo "   Copied base ENV_FILE: $ENV_FILE"
-else
-    touch "$WORKING_ENV_FILE"
 fi
 
-# 환경 변수의 토큰을 WORKING_ENV_FILE에 추가/업데이트
+
+# 환경 변수 토큰을 WORKING_ENV_FILE에 추가/업데이트
 for token_name in "KAKAO_ACCESS_TOKEN" "KAKAO_REFRESH_TOKEN" "NAVER_ACCESS_TOKEN" "NAVER_REFRESH_TOKEN" "BACKEND_BASE_URL"; do
     token_value=$(eval echo \$${token_name})
     if [ -n "$token_value" ]; then
-        # 기존 값이 있으면 제거하고 새로 추가
+        # 기존 값 제거 후 추가
         sed -i "/^${token_name}=/d" "$WORKING_ENV_FILE" 2>/dev/null || true
         echo "${token_name}=${token_value}" >> "$WORKING_ENV_FILE"
     fi
 done
 
-# 작업용 ENV_FILE 사용
-ENV_FILE="$WORKING_ENV_FILE"
+# token_validator.py가 읽을 ENV_FILE 경로 설정
+export ENV_FILE="$WORKING_ENV_FILE"
 
-# 네이버와 카카오 토큰 갱신
+
+# ============================================================
+# 2. 네이버/카카오 토큰 갱신
+# ============================================================
+
 echo "=== 2. Refreshing Tokens ==="
 for provider in "naver" "kakao"; do
     echo "🔄 Refreshing ${provider} token..."
@@ -65,31 +73,34 @@ for provider in "naver" "kakao"; do
         --env-path "${ENV_FILE}" || true
 done
 
-# 갱신된 토큰 읽기
-echo "=== 3. Reading Updated Tokens ==="
-if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
-    # ENV_FILE에서 토큰 값 추출 함수
-    get_env_value() {
-        local key=$1
-        grep "^${key}=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//' | head -1
-    }
-    
-    KAKAO_ACCESS_TOKEN_NEW=$(get_env_value "KAKAO_ACCESS_TOKEN")
-    KAKAO_REFRESH_TOKEN_NEW=$(get_env_value "KAKAO_REFRESH_TOKEN")
-    NAVER_ACCESS_TOKEN_NEW=$(get_env_value "NAVER_ACCESS_TOKEN")
-    NAVER_REFRESH_TOKEN_NEW=$(get_env_value "NAVER_REFRESH_TOKEN")
-    
-    # ENV_FILE에서 읽은 값이 있으면 사용, 없으면 환경 변수 사용
-    KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN_NEW:-${KAKAO_ACCESS_TOKEN}}"
-    KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN_NEW:-${KAKAO_REFRESH_TOKEN}}"
-    NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN_NEW:-${NAVER_ACCESS_TOKEN}}"
-    NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN_NEW:-${NAVER_REFRESH_TOKEN}}"
-else
-    # ENV_FILE이 없으면 환경 변수에서 직접 사용 (이미 Jenkinsfile에서 export됨)
-    echo "   Using tokens from environment variables"
-fi
 
-# Jenkins credential 업데이트 함수
+# ============================================================
+# 3. 갱신된 토큰 읽기
+# ============================================================
+
+echo "=== 3. Reading Updated Tokens ==="
+
+get_env_value() {
+    local key=$1
+    grep "^${key}=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//' | head -1
+}
+
+KAKAO_ACCESS_TOKEN_NEW=$(get_env_value "KAKAO_ACCESS_TOKEN")
+KAKAO_REFRESH_TOKEN_NEW=$(get_env_value "KAKAO_REFRESH_TOKEN")
+NAVER_ACCESS_TOKEN_NEW=$(get_env_value "NAVER_ACCESS_TOKEN")
+NAVER_REFRESH_TOKEN_NEW=$(get_env_value "NAVER_REFRESH_TOKEN")
+
+# fallback: 새 값이 없으면 기존 환경 변수 유지
+KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN_NEW:-${KAKAO_ACCESS_TOKEN}}"
+KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN_NEW:-${KAKAO_REFRESH_TOKEN}}"
+NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN_NEW:-${NAVER_ACCESS_TOKEN}}"
+NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN_NEW:-${NAVER_REFRESH_TOKEN}}"
+
+
+# ============================================================
+# 4. Jenkins Credentials 업데이트
+# ============================================================
+
 update_jenkins_credential() {
     local credential_id=$1
     local secret=$2
@@ -106,7 +117,6 @@ update_jenkins_credential() {
         -f -s -o /dev/null && echo "✅ ${credential_id} updated" || echo "⚠️  ${credential_id} update failed"
 }
 
-# Jenkins credentials 업데이트
 if [ -n "$JENKINS_USER" ] && [ -n "$JENKINS_PASS" ]; then
     echo "=== 4. Updating Jenkins Credentials ==="
     
@@ -117,14 +127,17 @@ if [ -n "$JENKINS_USER" ] && [ -n "$JENKINS_PASS" ]; then
     
     echo "✅ Jenkins credentials update completed"
 else
-    echo "⚠️  Jenkins credentials not updated (JENKINS_USER or JENKINS_PASS not set)"
+    echo "⚠️ Jenkins credentials not updated (missing JENKINS_USER/JENKINS_PASS)"
 fi
+
 
 echo "✅ Token refresh process completed"
 
-# 작업용 ENV_FILE 정리
-if [ -f "$WORKING_ENV_FILE" ]; then
-    rm -f "$WORKING_ENV_FILE"
-fi
+
+# ============================================================
+# 5. cleanup
+# ============================================================
+
+rm -f "$WORKING_ENV_FILE"
 
 exit 0

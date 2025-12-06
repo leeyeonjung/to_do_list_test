@@ -10,7 +10,7 @@ ENV/
 env/
 
 # Environment variables
-.env
+.env-*
 
 # Testing
 .pytest_cache/
@@ -28,3 +28,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Text files
+*.txt

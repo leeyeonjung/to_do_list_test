@@ -12,21 +12,21 @@ pipeline {
 
     stages {
 
+        /* =======================================
+           1. Python 가상환경 세팅
+        ======================================= */
         stage('Setup Python Environment') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
-
                         sh '''
-                            echo "🐍 Python 가상환경 자동 생성..."
-
-                            # Python venv 생성
+                            echo "🐍 Python 가상환경 생성..."
                             python3 -m venv venv
 
                             echo "📦 pip 업그레이드..."
                             venv/bin/pip install --upgrade pip
 
-                            echo "📦 requirements.txt 설치..."
+                            echo "📦 requirements 설치..."
                             venv/bin/pip install -r requirements.txt
 
                             echo "🎭 Playwright 설치..."
@@ -37,21 +37,47 @@ pipeline {
             }
         }
 
+        /* =======================================
+           2. TEST 실행
+        ======================================= */
         stage('Run Tests') {
             steps {
                 script {
+
                     dir(env.WORKSPACE_DIR) {
 
                         withCredentials([
-                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE')
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',     variable: 'KAKAO_ACCESS_TOKEN'),
+                            string(credentialsId: 'KAKAO_REFRESH_TOKEN',    variable: 'KAKAO_REFRESH_TOKEN'),
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN',     variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN',    variable: 'NAVER_REFRESH_TOKEN'),
+                            string(credentialsId: 'WEB_TEST_JWT_TOKEN',     variable: 'WEB_TEST_JWT_TOKEN')
                         ]) {
 
                             sh '''
-                                ###################################################
-                                # 🔐 환경 변수 로딩 (민감정보 echo 방지)
-                                ###################################################
+                                ###############################################
+                                # 🔐 Secret Text 환경변수 export
+                                ###############################################
                                 set +x
-                                echo "📌 환경 변수 로딩 시작..."
+                                echo "📌 Secret Text 토큰 로딩..."
+
+                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
+                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
+                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
+                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
+                                export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
+
+                                echo "🔐 토큰 export 완료!"
+                                set -x
+
+
+                                ###############################################
+                                # 🔐 Secret File (.env) 로딩
+                                ###############################################
+                                set +x
+                                echo "📌 ENV 파일 로딩 시작..."
 
                                 set -a
                                 while IFS= read -r line || [ -n "$line" ]; do
@@ -69,12 +95,13 @@ pipeline {
                                 done < "$ENV_FILE"
                                 set +a
 
-                                echo "🔐 환경 변수 로딩 완료!"
+                                echo "🔐 ENV 파일 로딩 완료!"
                                 set -x
 
-                                ###################################################
-                                # ▶ 테스트 실행
-                                ###################################################
+
+                                ###############################################
+                                # ▶ Pytest 실행
+                                ###############################################
                                 ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
                             '''
                         }
@@ -83,11 +110,13 @@ pipeline {
             }
         }
 
+        /* =======================================
+           3. Report 저장
+        ======================================= */
         stage('Archive Test Report') {
             steps {
                 script {
-                    echo "📄 HTML 테스트 리포트를 저장합니다..."
-
+                    echo "📄 HTML 테스트 리포트 저장..."
                     archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
                 }
             }

@@ -59,7 +59,7 @@ pipeline {
                             usernamePassword(credentialsId: 'jenkins-admin', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS'),
 
                             // BACKEND URL (Token Validator 필수)
-                            string(credentialsId: 'BACKEND_BASE_URL', variable: 'BACKEND_BASE_URL')
+                            export BACKEND_BASE_URL="${BACKEND_BASE_URL}"
                         ]) {
 
                             sh '''

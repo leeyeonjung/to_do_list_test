@@ -63,14 +63,18 @@ get_from_envfile() {
 }
 
 # 값 채우기 (우선순위 적용)
-BACKEND_BASE_URL="${J_BACKEND_URL:-$(get_from_envfile BACKEND_BASE_URL)}"
 KAKAO_ACCESS_TOKEN="${J_KAKAO_ACCESS:-$(get_from_envfile KAKAO_ACCESS_TOKEN)}"
 KAKAO_REFRESH_TOKEN="${J_KAKAO_REFRESH:-$(get_from_envfile KAKAO_REFRESH_TOKEN)}"
 NAVER_ACCESS_TOKEN="${J_NAVER_ACCESS:-$(get_from_envfile NAVER_ACCESS_TOKEN)}"
 NAVER_REFRESH_TOKEN="${J_NAVER_REFRESH:-$(get_from_envfile NAVER_REFRESH_TOKEN)}"
 
-# OS 환경변수로 export (token_validator.py 요구사항)
+if [ -z "$BACKEND_BASE_URL" ]; then
+    BACKEND_BASE_URL="$(grep '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')"
+fi
+
 export BACKEND_BASE_URL
+echo "Loaded BACKEND_BASE_URL: $BACKEND_BASE_URL"
+
 export KAKAO_ACCESS_TOKEN
 export KAKAO_REFRESH_TOKEN
 export NAVER_ACCESS_TOKEN

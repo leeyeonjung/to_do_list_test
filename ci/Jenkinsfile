@@ -1,4 +1,5 @@
 pipeline {
+
     agent { label 'linux_02' }
 
     environment {
@@ -12,92 +13,132 @@ pipeline {
 
     stages {
 
+        /* =======================================
+           1. Python 가상환경 세팅
+        ======================================= */
         stage('Setup Python Environment') {
             steps {
-                sh '''
-                    python3 -m venv venv
-                    venv/bin/pip install --upgrade pip
-                    venv/bin/pip install -r requirements.txt
-                    venv/bin/playwright install chromium
-                '''
+                script {
+                    dir(env.WORKSPACE_DIR) {
+                        sh '''
+                            echo "🐍 Python 가상환경 생성..."
+                            python3 -m venv venv
+
+                            echo "📦 pip 업그레이드..."
+                            venv/bin/pip install --upgrade pip
+
+                            echo "📦 requirements 설치..."
+                            venv/bin/pip install -r requirements.txt
+
+                            echo "🎭 Playwright 설치..."
+                            venv/bin/playwright install chromium
+                        '''
+                    }
+                }
             }
         }
 
         /* =======================================
-        2. Validate & Refresh Tokens
+           2. 토큰 검증 & 갱신 단계 (방법 B 완성본)
         ======================================= */
         stage('Validate and Refresh Tokens') {
             steps {
-                withCredentials([
-                    file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+                script {
+                    dir(env.WORKSPACE_DIR) {
 
-                    string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
-                    string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
-                    string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
-                    string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
-                    string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN'),
+                        withCredentials([
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
 
-                    usernamePassword(credentialsId: 'jenkins-admin',
-                        usernameVariable: 'JENKINS_USER',
-                        passwordVariable: 'JENKINS_PASS')
-                ]) {
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
+                            string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
+                            string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN'),
 
-                    sh '''
-                        set +x
+                            usernamePassword(
+                                credentialsId: 'jenkins-admin',
+                                usernameVariable: 'JENKINS_USER',
+                                passwordVariable: 'JENKINS_PASS'
+                            )
+                        ]) {
 
-                        export KAKAO_ACCESS_TOKEN="$KAKAO_ACCESS_TOKEN"
-                        export KAKAO_REFRESH_TOKEN="$KAKAO_REFRESH_TOKEN"
-                        export NAVER_ACCESS_TOKEN="$NAVER_ACCESS_TOKEN"
-                        export NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN"
+                            sh '''
+                                set +x
+                                echo "🔐 Exporting Credentials..."
 
-                        export JENKINS_USER="$JENKINS_USER"
-                        export JENKINS_PASS="$JENKINS_PASS"
-                        export ENV_FILE="$ENV_FILE"
+                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
+                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
+                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
+                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
 
-                        set -x
+                                export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
 
-                        bash ci/check_token_valid.sh
-                    '''
+                                export JENKINS_USER="${JENKINS_USER}"
+                                export JENKINS_PASS="${JENKINS_PASS}"
+                                export ENV_FILE="${ENV_FILE}"
+
+                                echo "🔐 Export Done!"
+                                set -x
+
+                                bash ci/check_token_valid.sh
+                            '''
+                        }
+                    }
                 }
             }
         }
 
         /* =======================================
-        3. Run Tests (ENV_FILE 로딩 금지!)
+           3. 테스트 실행 단계
+           (❗ ENV_FILE 로딩 금지!)
         ======================================= */
         stage('Run Tests') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
-                    string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
-                    string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
-                    string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
-                    string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN')
-                ]) {
+                script {
+                    dir(env.WORKSPACE_DIR) {
 
-                    sh '''
-                        set +x
-                        export KAKAO_ACCESS_TOKEN="$KAKAO_ACCESS_TOKEN"
-                        export KAKAO_REFRESH_TOKEN="$KAKAO_REFRESH_TOKEN"
-                        export NAVER_ACCESS_TOKEN="$NAVER_ACCESS_TOKEN"
-                        export NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN"
-                        export WEB_TEST_JWT_TOKEN="$WEB_TEST_JWT_TOKEN"
-                        set -x
+                        withCredentials([
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
+                            string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
+                            string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN')
+                        ]) {
 
-                        venv/bin/python -m pytest --disable-warnings --maxfail=1 || true
-                    '''
+                            sh '''
+                                ###############################################
+                                # 🔐 Token Export (ENV_FILE 로딩 금지!)
+                                ###############################################
+                                set +x
+                                echo "📌 Loading Tokens..."
+
+                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
+                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
+                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
+                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
+                                export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
+
+                                echo "🔐 Tokens Loaded!"
+                                set -x
+
+                                ###############################################
+                                # ▶ Pytest 실행
+                                ###############################################
+                                ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
+                            '''
+                        }
+                    }
                 }
             }
         }
 
-
         /* =======================================
-           4. Report 저장
+           4. HTML Report 저장
         ======================================= */
         stage('Archive Test Report') {
             steps {
                 script {
-                    echo "📄 Saving HTML Test Reports..."
+                    echo "📄 HTML 테스트 리포트 저장..."
                     archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
                 }
             }
@@ -106,9 +147,7 @@ pipeline {
 
     post {
         always {
-            script {
-                echo "🎉 Pipeline Completed!"
-            }
+            echo "🎉 전체 파이프라인 완료!"
         }
     }
 }

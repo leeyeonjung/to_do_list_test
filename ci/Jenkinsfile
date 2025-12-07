@@ -12,167 +12,84 @@ pipeline {
 
     stages {
 
-        /* =======================================
-           1. Python 가상환경 세팅
-        ======================================= */
         stage('Setup Python Environment') {
             steps {
-                script {
-                    dir(env.WORKSPACE_DIR) {
-                        sh '''
-                            echo "🐍 Python 가상환경 생성..."
-                            python3 -m venv venv
-
-                            echo "📦 pip 업그레이드..."
-                            venv/bin/pip install --upgrade pip
-
-                            echo "📦 requirements 설치..."
-                            venv/bin/pip install -r requirements.txt
-
-                            echo "🎭 Playwright 설치..."
-                            venv/bin/playwright install chromium
-                        '''
-                    }
-                }
+                sh '''
+                    python3 -m venv venv
+                    venv/bin/pip install --upgrade pip
+                    venv/bin/pip install -r requirements.txt
+                    venv/bin/playwright install chromium
+                '''
             }
         }
 
         /* =======================================
-        2. 토큰 검증 및 갱신 (최종 결합된 버전)
+        2. Validate & Refresh Tokens
         ======================================= */
         stage('Validate and Refresh Tokens') {
             steps {
-                script {
-                    dir(env.WORKSPACE_DIR) {
+                withCredentials([
+                    file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
 
-                        withCredentials([
-                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+                    string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
+                    string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
+                    string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
+                    string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
+                    string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN'),
 
-                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
-                            string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
-                            string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
-                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
-                            string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN'),
+                    usernamePassword(credentialsId: 'jenkins-admin',
+                        usernameVariable: 'JENKINS_USER',
+                        passwordVariable: 'JENKINS_PASS')
+                ]) {
 
-                            usernamePassword(credentialsId: 'jenkins-admin',
-                                usernameVariable: 'JENKINS_USER',
-                                passwordVariable: 'JENKINS_PASS')
-                        ]) {
+                    sh '''
+                        set +x
 
-                            sh '''
-                                set +x
-                                echo "🔐 Exporting Credentials..."
+                        export KAKAO_ACCESS_TOKEN="$KAKAO_ACCESS_TOKEN"
+                        export KAKAO_REFRESH_TOKEN="$KAKAO_REFRESH_TOKEN"
+                        export NAVER_ACCESS_TOKEN="$NAVER_ACCESS_TOKEN"
+                        export NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN"
 
-                                # -----------------------------
-                                # Export tokens
-                                # -----------------------------
-                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
-                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
-                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
-                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
-                                export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
+                        export JENKINS_USER="$JENKINS_USER"
+                        export JENKINS_PASS="$JENKINS_PASS"
+                        export ENV_FILE="$ENV_FILE"
 
-                                export JENKINS_USER="${JENKINS_USER}"
-                                export JENKINS_PASS="${JENKINS_PASS}"
+                        set -x
 
-                                export ENV_FILE="${ENV_FILE}"
-
-                                # -----------------------------
-                                # 방법 B: BACKEND_BASE_URL을 ENV_FILE에서 로드
-                                # -----------------------------
-                                BACKEND_BASE_URL_RAW="$(grep -E '^[[:space:]]*BACKEND_BASE_URL=' "$ENV_FILE" | sed 's/^[[:space:]]*//')"
-                                BACKEND_BASE_URL_VALUE="${BACKEND_BASE_URL_RAW#BACKEND_BASE_URL=}"
-                                BACKEND_BASE_URL_CLEAN="$(echo "$BACKEND_BASE_URL_VALUE" | sed 's/^"//;s/"$//')"
-                                export BACKEND_BASE_URL="$BACKEND_BASE_URL_CLEAN"
-
-                                echo "Using BACKEND_BASE_URL: $BACKEND_BASE_URL_CLEAN"
-
-                                if [ -z "$BACKEND_BASE_URL" ]; then
-                                    echo "❌ ERROR: BACKEND_BASE_URL not found in ENV_FILE!"
-                                    exit 1
-                                fi
-
-                                echo "🔐 Export Done!"
-                                set -x
-
-                                bash ci/check_token_valid.sh
-                            '''
-                        }
-                    }
+                        bash ci/check_token_valid.sh
+                    '''
                 }
             }
         }
 
-
         /* =======================================
-           3. TEST 실행
+        3. Run Tests (ENV_FILE 로딩 금지!)
         ======================================= */
         stage('Run Tests') {
             steps {
-                script {
-                    dir(env.WORKSPACE_DIR) {
+                withCredentials([
+                    string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
+                    string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
+                    string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
+                    string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
+                    string(credentialsId: 'WEB_TEST_JWT_TOKEN',  variable: 'WEB_TEST_JWT_TOKEN')
+                ]) {
 
-                        withCredentials([
-                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+                    sh '''
+                        set +x
+                        export KAKAO_ACCESS_TOKEN="$KAKAO_ACCESS_TOKEN"
+                        export KAKAO_REFRESH_TOKEN="$KAKAO_REFRESH_TOKEN"
+                        export NAVER_ACCESS_TOKEN="$NAVER_ACCESS_TOKEN"
+                        export NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN"
+                        export WEB_TEST_JWT_TOKEN="$WEB_TEST_JWT_TOKEN"
+                        set -x
 
-                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',     variable: 'KAKAO_ACCESS_TOKEN'),
-                            string(credentialsId: 'KAKAO_REFRESH_TOKEN',    variable: 'KAKAO_REFRESH_TOKEN'),
-                            string(credentialsId: 'NAVER_ACCESS_TOKEN',     variable: 'NAVER_ACCESS_TOKEN'),
-                            string(credentialsId: 'NAVER_REFRESH_TOKEN',    variable: 'NAVER_REFRESH_TOKEN'),
-                            string(credentialsId: 'WEB_TEST_JWT_TOKEN',     variable: 'WEB_TEST_JWT_TOKEN')
-                        ]) {
-
-                            sh '''
-                                ###############################################
-                                # 🔐 Secret Token Export
-                                ###############################################
-                                set +x
-                                echo "📌 Loading Tokens..."
-
-                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
-                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
-                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
-                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
-                                export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
-
-                                echo "🔐 Tokens Loaded!"
-                                set -x
-
-                                ###############################################
-                                # 🔐 Load ENV File
-                                ###############################################
-                                set +x
-                                echo "📌 Loading ENV File..."
-
-                                set -a
-                                while IFS= read -r line || [ -n "$line" ]; do
-                                    trimmed=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-
-                                    if [ -z "$trimmed" ] || [ "$(printf %.1s "$trimmed")" = "#" ]; then
-                                        continue
-                                    fi
-
-                                    if echo "$trimmed" | grep -q "="; then
-                                        key=$(echo "$trimmed" | cut -d '=' -f 1)
-                                        value=$(echo "$trimmed" | cut -d '=' -f 2-)
-                                        export "$key=$value"
-                                    fi
-                                done < "$ENV_FILE"
-                                set +a
-
-                                echo "🔐 ENV Loaded!"
-                                set -x
-
-                                ###############################################
-                                # ▶ Pytest 실행
-                                ###############################################
-                                ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
-                            '''
-                        }
-                    }
+                        venv/bin/python -m pytest --disable-warnings --maxfail=1 || true
+                    '''
                 }
             }
         }
+
 
         /* =======================================
            4. Report 저장

@@ -48,18 +48,13 @@ pipeline {
                         withCredentials([
                             file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
 
-                            // OAuth Token Credentials
                             string(credentialsId: 'KAKAO_ACCESS_TOKEN',     variable: 'KAKAO_ACCESS_TOKEN'),
                             string(credentialsId: 'KAKAO_REFRESH_TOKEN',    variable: 'KAKAO_REFRESH_TOKEN'),
                             string(credentialsId: 'NAVER_ACCESS_TOKEN',     variable: 'NAVER_ACCESS_TOKEN'),
                             string(credentialsId: 'NAVER_REFRESH_TOKEN',    variable: 'NAVER_REFRESH_TOKEN'),
                             string(credentialsId: 'WEB_TEST_JWT_TOKEN',     variable: 'WEB_TEST_JWT_TOKEN'),
 
-                            // Jenkins API Credential
-                            usernamePassword(credentialsId: 'jenkins-admin', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS'),
-
-                            // BACKEND URL (Token Validator 필수)
-                            export BACKEND_BASE_URL="${BACKEND_BASE_URL}"
+                            usernamePassword(credentialsId: 'jenkins-admin', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS')
                         ]) {
 
                             sh '''
@@ -75,7 +70,9 @@ pipeline {
                                 export JENKINS_USER="${JENKINS_USER}"
                                 export JENKINS_PASS="${JENKINS_PASS}"
 
-                                export BACKEND_BASE_URL="${BACKEND_BASE_URL}"
+                                # 🔥 방법 B — BACKEND_BASE_URL을 ENV_FILE에서 직접 로드
+                                export BACKEND_BASE_URL="$(grep '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- | sed 's/^\"//;s/\"$//')"
+
                                 export ENV_FILE="${ENV_FILE}"
 
                                 echo "🔐 Export Done!"

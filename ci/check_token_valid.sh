@@ -80,9 +80,6 @@ export KAKAO_REFRESH_TOKEN
 export NAVER_ACCESS_TOKEN
 export NAVER_REFRESH_TOKEN
 
-echo "Loaded BACKEND_BASE_URL: $BACKEND_BASE_URL"
-
-
 # ========================================
 # 1.5 임시 ENV_FILE 생성 (validator가 읽을 값)
 # ========================================

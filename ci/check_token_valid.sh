@@ -11,6 +11,9 @@ if [ ! -f "$PYTHON" ]; then
     exit 1
 fi
 
+# Python 모듈 경로 설정 (src 모듈을 찾을 수 있도록)
+export PYTHONPATH="${WORKSPACE_DIR}:${PYTHONPATH}"
+
 echo "=== 1. Token Check (NAVER & KAKAO) ==="
 RESULT=$($PYTHON "${WORKSPACE_DIR}/src/utils/check_social_token.py")
 
@@ -67,7 +70,7 @@ export ENV_FILE="$WORKING_ENV_FILE"
 echo "=== 2. Refreshing Tokens ==="
 for provider in "naver" "kakao"; do
     echo "🔄 Refreshing ${provider} token..."
-    $PYTHON "${WORKSPACE_DIR}/src/utils/token_validator.py" \
+    PYTHONPATH="${WORKSPACE_DIR}:${PYTHONPATH}" $PYTHON "${WORKSPACE_DIR}/src/utils/token_validator.py" \
         --provider "${provider}" \
         --backend-base-url "${BACKEND_BASE_URL}" \
         --env-path "${ENV_FILE}" || true

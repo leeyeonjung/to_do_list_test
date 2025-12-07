@@ -38,35 +38,49 @@ pipeline {
         }
 
         /* =======================================
-           2. 토큰 검증 및 갱신
+           2. 토큰 검증 및 갱신 (최종 결합된 버전)
         ======================================= */
         stage('Validate and Refresh Tokens') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
+
                         withCredentials([
                             file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
-                            
+
+                            // OAuth Token Credentials
                             string(credentialsId: 'KAKAO_ACCESS_TOKEN',     variable: 'KAKAO_ACCESS_TOKEN'),
                             string(credentialsId: 'KAKAO_REFRESH_TOKEN',    variable: 'KAKAO_REFRESH_TOKEN'),
                             string(credentialsId: 'NAVER_ACCESS_TOKEN',     variable: 'NAVER_ACCESS_TOKEN'),
                             string(credentialsId: 'NAVER_REFRESH_TOKEN',    variable: 'NAVER_REFRESH_TOKEN'),
                             string(credentialsId: 'WEB_TEST_JWT_TOKEN',     variable: 'WEB_TEST_JWT_TOKEN'),
-                            
-                            usernamePassword(credentialsId: 'jenkins-admin', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS')
+
+                            // Jenkins API Credential
+                            usernamePassword(credentialsId: 'jenkins-admin', usernameVariable: 'JENKINS_USER', passwordVariable: 'JENKINS_PASS'),
+
+                            // BACKEND URL (Token Validator 필수)
+                            string(credentialsId: 'BACKEND_BASE_URL', variable: 'BACKEND_BASE_URL')
                         ]) {
+
                             sh '''
                                 set +x
+                                echo "🔐 Exporting Credentials..."
+
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
                                 export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
                                 export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
+
                                 export JENKINS_USER="${JENKINS_USER}"
                                 export JENKINS_PASS="${JENKINS_PASS}"
+
+                                export BACKEND_BASE_URL="${BACKEND_BASE_URL}"
                                 export ENV_FILE="${ENV_FILE}"
+
+                                echo "🔐 Export Done!"
                                 set -x
-                                
+
                                 bash ci/check_token_valid.sh
                             '''
                         }
@@ -81,7 +95,6 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-
                     dir(env.WORKSPACE_DIR) {
 
                         withCredentials([
@@ -96,10 +109,10 @@ pipeline {
 
                             sh '''
                                 ###############################################
-                                # 🔐 Secret Text 환경변수 export
+                                # 🔐 Secret Token Export
                                 ###############################################
                                 set +x
-                                echo "📌 Secret Text 토큰 로딩..."
+                                echo "📌 Loading Tokens..."
 
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
@@ -107,15 +120,14 @@ pipeline {
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
                                 export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
 
-                                echo "🔐 토큰 export 완료!"
+                                echo "🔐 Tokens Loaded!"
                                 set -x
 
-
                                 ###############################################
-                                # 🔐 Secret File (.env) 로딩
+                                # 🔐 Load ENV File
                                 ###############################################
                                 set +x
-                                echo "📌 ENV 파일 로딩 시작..."
+                                echo "📌 Loading ENV File..."
 
                                 set -a
                                 while IFS= read -r line || [ -n "$line" ]; do
@@ -133,9 +145,8 @@ pipeline {
                                 done < "$ENV_FILE"
                                 set +a
 
-                                echo "🔐 ENV 파일 로딩 완료!"
+                                echo "🔐 ENV Loaded!"
                                 set -x
-
 
                                 ###############################################
                                 # ▶ Pytest 실행
@@ -154,7 +165,7 @@ pipeline {
         stage('Archive Test Report') {
             steps {
                 script {
-                    echo "📄 HTML 테스트 리포트 저장..."
+                    echo "📄 Saving HTML Test Reports..."
                     archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
                 }
             }
@@ -164,7 +175,7 @@ pipeline {
     post {
         always {
             script {
-                echo "🎉 전체 파이프라인 완료!"
+                echo "🎉 Pipeline Completed!"
             }
         }
     }

@@ -10,6 +10,8 @@ from typing import Dict, Optional, Tuple
 import requests
 from dotenv import load_dotenv
 
+from src.utils.env_loader import get_env_path
+
 log = logging.getLogger(__name__)
 
 
@@ -219,7 +221,10 @@ def fetch_and_update_jwt_token(
     """
     # .env 파일 경로 설정
     if env_path is None:
-        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+        env_path = get_env_path()
+        if env_path is None:
+            log.error("환경 변수 파일을 찾을 수 없습니다. (.env 또는 .env-dev-test)")
+            return {}
 
     # 백엔드 기본 URL 설정
     if backend_base_url is None:
@@ -282,7 +287,10 @@ def ensure_valid_jwt_token(
     """
     # .env 파일 경로 설정
     if env_path is None:
-        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+        env_path = get_env_path()
+        if env_path is None:
+            log.error("환경 변수 파일을 찾을 수 없습니다. (.env 또는 .env-dev-test)")
+            return ""
     
     # 백엔드 기본 URL 설정
     if backend_base_url is None:
@@ -475,7 +483,10 @@ def ensure_valid_oauth_token(
     """
     # .env 파일 경로 설정
     if env_path is None:
-        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+        env_path = get_env_path()
+        if env_path is None:
+            log.error("환경 변수 파일을 찾을 수 없습니다. (.env 또는 .env-dev-test)")
+            return None
     
     # .env 파일 로드
     load_dotenv(env_path)

@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 import requests
-from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
 from src.actions.api.base_api import BaseAPI
 from src.actions.web.auth_actions import AuthActions
 from src.actions.web.todo_actions import TodoActions
+from src.utils.env_loader import load_env_files
 from src.utils.token_validator import (
     ensure_valid_jwt_token,
     ensure_valid_kakao_token,
@@ -21,9 +21,8 @@ from src.utils.token_validator import (
 
 log = logging.getLogger(__name__)
 
-# .env 파일 로드
-env_path = Path(__file__).resolve().parent / ".env"
-load_dotenv(env_path)
+# .env 파일 로드 (공통 모듈 사용)
+load_env_files()
 
 
 # Utility Functions

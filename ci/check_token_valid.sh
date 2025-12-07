@@ -36,17 +36,18 @@ KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN:-$(get_from_env KAKAO_REFRESH_TOKEN)}
 NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN:-$(get_from_env NAVER_ACCESS_TOKEN)}"
 NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN:-$(get_from_env NAVER_REFRESH_TOKEN)}"
 
-# BACKEND_BASE_URL
+# Load BACKEND_BASE_URL
 BACKEND_BASE_URL_RAW="$(grep -E '^[[:space:]]*BACKEND_BASE_URL=' "$ENV_FILE" | sed 's/^[[:space:]]*//')"
 BACKEND_BASE_URL="${BACKEND_BASE_URL_RAW#BACKEND_BASE_URL=}"
-BACKEND_BASE_URL="$(echo "$BACKEND_BASE_URL" | sed 's/^"//;s/"$//')"
 
-if [ -z "$BACKEND_BASE_URL" ]; then
-    echo "❌ BACKEND_BASE_URL not found in ENV_FILE"
-    exit 1
-fi
+# Normalize (remove quotes, CR, LF, whitespace)
+BACKEND_BASE_URL="$(echo "$BACKEND_BASE_URL" \
+    | sed 's/^"//;s/"$//' \
+    | tr -d '\r' \
+    | tr -d '\n' \
+    | tr -d ' ')"
 
-echo "Loaded BACKEND_BASE_URL: $BACKEND_BASE_URL"
+echo "Normalized BACKEND_BASE_URL: '$BACKEND_BASE_URL'"
 
 echo "=== 1.5 Creating temporary ENV_FILE ==="
 TMP_ENV=$(mktemp /tmp/env.XXXXXX)

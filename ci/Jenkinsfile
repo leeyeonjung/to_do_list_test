@@ -64,6 +64,7 @@ pipeline {
 
                             sh '''
                                 set +x
+                                export PYTHONPATH="${WORKSPACE}:${PYTHONPATH}"
                                 echo "🔐 Exporting Credentials..."
 
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"

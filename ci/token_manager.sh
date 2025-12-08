@@ -23,14 +23,14 @@ BACKEND_BASE_URL="$(
 
 echo "🌐 BACKEND_BASE_URL = $BACKEND_BASE_URL"
 
-KAKAO_RESULT=$(python3 src/utils/token_validator.py validate_oauth_token "$BACKEND_BASE_URL" "$KAKAO_ACCESS_TOKEN" "/api/auth/kakao")
+KAKAO_RESULT=$(python3 -m src/utils/token_validator.py validate_oauth_token "$BACKEND_BASE_URL" "$KAKAO_ACCESS_TOKEN" "/api/auth/kakao")
 echo "🔍 KAKAO_RESULT = $KAKAO_RESULT"
 if [[ "$KAKAO_RESULT" == "True" ]]; then
     echo "🟢 Token is VALID"
     exit 0
 else
     echo "🔴 Kakao Token is INVALID"
-    REFRESH_KAKAO_RESULT=$(python3 src/utils/token_validator.py refresh_oauth_token "$BACKEND_BASE_URL" "$KAKAO_REFRESH_TOKEN" "/api/auth/kakao/refresh")
+    REFRESH_KAKAO_RESULT=$(python3 -m src/utils/token_validator.py refresh_oauth_token "$BACKEND_BASE_URL" "$KAKAO_REFRESH_TOKEN" "/api/auth/kakao/refresh")
     KAKAO_ACCESS=$(jq -r '.access_token' token.json)
     KAKAO_REFRESH=$(jq -r '.refresh_token' token.json)  
     exit 1
@@ -50,14 +50,14 @@ curl -X POST \
 
 
 
-NAVER_RESULT=$(python3 src/utils/token_validator.py validate_oauth_token "$BACKEND_BASE_URL" "$NAVER_ACCESS_TOKEN" "/api/auth/naver")
+NAVER_RESULT=$(python3 -m src/utils/token_validator.py validate_oauth_token "$BACKEND_BASE_URL" "$NAVER_ACCESS_TOKEN" "/api/auth/naver")
 echo "🔍NAVER_RESULT = $NAVER_RESULT"
 if [[ "$NAVER_RESULT" == "True" ]]; then
     echo "🟢 Naver Token is VALID"
     exit 0
 else
     echo "🔴 Naver Token is INVALID"
-    REFRESH_NAVER_RESULT=$(python3 src/utils/token_validator.py refresh_oauth_token "$BACKEND_BASE_URL" "$NAVER_REFRESH_TOKEN" "/api/auth/naver/refresh")
+    REFRESH_NAVER_RESULT=$(python3 -m src/utils/token_validator.py refresh_oauth_token "$BACKEND_BASE_URL" "$NAVER_REFRESH_TOKEN" "/api/auth/naver/refresh")
     NAVER_ACCESS=$(jq -r '.access_token' token.json)
     NAVER_REFRESH=$(jq -r '.refresh_token' token.json)  
     exit 1
@@ -76,14 +76,14 @@ curl -X POST \
     "$JENKINS_URL/credentials/store/system/domain/_/credential/api_refresh_token"
 
 
-JWT_RESULT=$(python3 src/utils/token_validator.py validate_jwt_token "$BACKEND_BASE_URL" "$JWT_TOKEN" "/api/auth/jwt")
+JWT_RESULT=$(python3 -m src/utils/token_validator.py validate_jwt_token "$BACKEND_BASE_URL" "$JWT_TOKEN" "/api/auth/jwt")
 echo "🔍JWT_RESULT = $JWT_RESULT"
 if [[ "$JWT_RESULT" == "True" ]]; then
     echo "🟢 JWT Token is VALID"
     exit 0
 else
     echo "🔴 JWT Token is INVALID"
-    REFRESH_JWT_RESULT=$(python3 src/utils/token_validator.py refresh_jwt_token "$BACKEND_BASE_URL" "$JWT_REFRESH_TOKEN" "/api/auth/jwt/refresh")
+    REFRESH_JWT_RESULT=$(python3 -m src/utils/token_validator.py refresh_jwt_token "$BACKEND_BASE_URL" "$JWT_REFRESH_TOKEN" "/api/auth/jwt/refresh")
     JWT_ACCESS=$(jq -r '.access_token' token.json)
     JWT_REFRESH=$(jq -r '.refresh_token' token.json)  
     exit 1

@@ -9,28 +9,20 @@ pipeline {
         PYTHON        = "${env.WORKSPACE}/venv/bin/python"
         PIP           = "${env.WORKSPACE}/venv/bin/pip"
         PLAYWRIGHT    = "${env.WORKSPACE}/venv/bin/playwright"
+
+        JENKINS_URL   = "http://3.36.219.242:8080"
     }
 
     stages {
 
-        /* =======================================
-           1. Python 가상환경 세팅
-        ======================================= */
         stage('Setup Python Environment') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
                         sh '''
-                            echo "🐍 Python 가상환경 생성..."
                             python3 -m venv venv
-
-                            echo "📦 pip 업그레이드..."
                             venv/bin/pip install --upgrade pip
-
-                            echo "📦 requirements 설치..."
                             venv/bin/pip install -r requirements.txt
-
-                            echo "🎭 Playwright 설치..."
                             venv/bin/playwright install chromium
                         '''
                     }
@@ -38,9 +30,6 @@ pipeline {
             }
         }
 
-        /* =======================================
-           2. 토큰 검증 & 갱신 단계 (방법 B 완성본)
-        ======================================= */
         stage('Validate and Refresh Tokens') {
             steps {
                 script {
@@ -65,22 +54,20 @@ pipeline {
                             sh '''
                                 set +x
                                 export PYTHONPATH="${WORKSPACE}:${PYTHONPATH}"
-                                echo "🔐 Exporting Credentials..."
 
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
                                 export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
-
                                 export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
 
                                 export JENKINS_USER="${JENKINS_USER}"
                                 export JENKINS_PASS="${JENKINS_PASS}"
+                                export JENKINS_URL="${JENKINS_URL}"
+
                                 export ENV_FILE="${ENV_FILE}"
 
-                                echo "🔐 Export Done!"
                                 set -x
-
                                 bash ci/check_token_valid.sh
                             '''
                         }
@@ -89,10 +76,6 @@ pipeline {
             }
         }
 
-        /* =======================================
-           3. 테스트 실행 단계
-           (❗ ENV_FILE 로딩 금지!)
-        ======================================= */
         stage('Run Tests') {
             steps {
                 script {
@@ -107,24 +90,14 @@ pipeline {
                         ]) {
 
                             sh '''
-                                ###############################################
-                                # 🔐 Token Export (ENV_FILE 로딩 금지!)
-                                ###############################################
                                 set +x
-                                echo "📌 Loading Tokens..."
-
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
                                 export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
                                 export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
-
-                                echo "🔐 Tokens Loaded!"
                                 set -x
 
-                                ###############################################
-                                # ▶ Pytest 실행
-                                ###############################################
                                 ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
                             '''
                         }
@@ -133,15 +106,9 @@ pipeline {
             }
         }
 
-        /* =======================================
-           4. HTML Report 저장
-        ======================================= */
         stage('Archive Test Report') {
             steps {
-                script {
-                    echo "📄 HTML 테스트 리포트 저장..."
-                    archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
-                }
+                archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
             }
         }
     }

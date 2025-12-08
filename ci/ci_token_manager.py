@@ -14,9 +14,6 @@ logging.basicConfig(level=logging.INFO)
 # -------------------------------------------------------------
 
 def update_jenkins_credential(credential_id: str, new_value: str):
-    """
-    Jenkins Credentials API를 사용하여 Secret Text Credential 값 업데이트
-    """
     jenkins_url = os.getenv("JENKINS_URL")
     user = os.getenv("JENKINS_USER")
     password = os.getenv("JENKINS_PASS")
@@ -25,10 +22,26 @@ def update_jenkins_credential(credential_id: str, new_value: str):
         log.error("❌ Jenkins Credential 업데이트 실패: 인증 정보 부족")
         return False
 
-    # credential 업데이트 API URL
+    # -----------------------------
+    # 1) Crumb Token 가져오기
+    # -----------------------------
+    crumb_url = f"{jenkins_url}/crumbIssuer/api/json"
+    crumb_resp = requests.get(crumb_url, auth=(user, password))
+
+    if crumb_resp.status_code != 200:
+        log.error(f"❌ Crumb Token 요청 실패: {crumb_resp.status_code}")
+        log.error(crumb_resp.text)
+        return False
+
+    crumb_data = crumb_resp.json()
+    crumb_field = crumb_data["crumbRequestField"]
+    crumb_value = crumb_data["crumb"]
+
+    # -----------------------------
+    # 2) Credential XML 생성
+    # -----------------------------
     api_url = f"{jenkins_url}/credentials/store/system/domain/_/credential/{credential_id}/config.xml"
 
-    # 새로운 Credential XML
     xml_data = f"""
 <com.cloudbees.plugins.credentials.impl.StringCredentialsImpl>
   <scope>GLOBAL</scope>
@@ -38,22 +51,27 @@ def update_jenkins_credential(credential_id: str, new_value: str):
 </com.cloudbees.plugins.credentials.impl.StringCredentialsImpl>
 """
 
-    log.info(f"🔐 Updating Jenkins credential: {credential_id}")
+    headers = {
+        "Content-Type": "application/xml",
+        crumb_field: crumb_value
+    }
 
+    # -----------------------------
+    # 3) Credential 업데이트 요청
+    # -----------------------------
     resp = requests.post(
         api_url,
         auth=(user, password),
-        headers={"Content-Type": "application/xml"},
+        headers=headers,
         data=xml_data.encode("utf-8")
     )
 
-    if resp.status_code in [200, 204]:
+    if resp.status_code in [200, 201, 204]:
         log.info(f"✅ Jenkins Credential 업데이트 성공: {credential_id}")
         return True
     else:
-        log.error(f"❌ Jenkins Credential 업데이트 실패 {resp.status_code}: {resp.text}")
+        log.error(f"❌ Credential 업데이트 실패 {resp.status_code}: {resp.text[:200]}")
         return False
-
 
 # -------------------------------------------------------------
 # 1. Helper Functions (Validation + Refresh)

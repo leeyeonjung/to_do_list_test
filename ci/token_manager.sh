@@ -153,6 +153,9 @@ if [[ "$NAVER_RESULT" == "True" ]]; then
 else
     echo "🔴 Naver Token is INVALID - Refreshing..."
     
+    # 이전 token.json 파일 제거 (혼동 방지)
+    rm -f token.json
+    
     # set -e의 영향을 받지 않도록 실행
     set +e
     # Python 스크립트 실행 및 에러 캡처
@@ -160,36 +163,46 @@ else
 import sys
 import json
 import os
+import requests
 sys.path.insert(0, '.')
-from src.utils.token_validator import refresh_oauth_token
 
 try:
-    result = refresh_oauth_token(
-        os.environ['BACKEND_BASE_URL'],
-        os.environ['NAVER_REFRESH_TOKEN'],
-        '/api/auth/naver/refresh'
-    )
+    backend_url = os.environ['BACKEND_BASE_URL']
+    refresh_token = os.environ['NAVER_REFRESH_TOKEN']
+    endpoint = '/api/auth/naver/refresh'
     
-    if not result:
-        print('Error: refresh_oauth_token returned None', file=sys.stderr)
-        sys.exit(1)
+    url = f\"{backend_url.rstrip('/')}/{endpoint.lstrip('/')}\"
+    payload = {\"refreshToken\": refresh_token}
     
-    # 토큰 키 확인 (다양한 형식 지원)
-    token = result.get('token') or result.get('accessToken') or result.get('access_token')
-    refresh_token = result.get('refreshToken') or result.get('refresh_token')
+    print(f'Making request to: {url}', file=sys.stderr)
+    resp = requests.post(url, json=payload, timeout=10)
     
-    if not token or not refresh_token:
-        print('Error: Missing tokens in response', file=sys.stderr)
-        print(f'token exists: {bool(token)}, refresh_token exists: {bool(refresh_token)}', file=sys.stderr)
+    print(f'Response status: {resp.status_code}', file=sys.stderr)
+    
+    if resp.status_code == 200:
+        result = resp.json()
         print(f'Response keys: {list(result.keys())}', file=sys.stderr)
+        
+        # 토큰 키 확인 (다양한 형식 지원)
+        token = result.get('token') or result.get('accessToken') or result.get('access_token')
+        refresh_token_resp = result.get('refreshToken') or result.get('refresh_token')
+        
+        if not token or not refresh_token_resp:
+            print('Error: Missing tokens in response', file=sys.stderr)
+            print(f'token exists: {bool(token)}, refresh_token exists: {bool(refresh_token_resp)}', file=sys.stderr)
+            print(f'Response: {json.dumps(result)}', file=sys.stderr)
+            sys.exit(1)
+        
+        # token.json에 저장
+        with open('token.json', 'w') as f:
+            json.dump(result, f)
+        
+        print('Success: token.json created', file=sys.stderr)
+        sys.exit(0)
+    else:
+        print(f'Error: HTTP {resp.status_code}: {resp.text}', file=sys.stderr)
         sys.exit(1)
-    
-    # token.json에 저장
-    with open('token.json', 'w') as f:
-        json.dump(result, f)
-    
-    print('Success: token.json created', file=sys.stderr)
-    sys.exit(0)
+        
 except Exception as e:
     import traceback
     print(f'Error: {e}', file=sys.stderr)

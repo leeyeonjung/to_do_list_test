@@ -3,10 +3,13 @@
 set -e
 
 echo "========================================"
-echo "🔄 CI Token Manager (pure bash version)"
+echo "🔄 CI Token Manager
 echo "========================================"
 
 JENKINS_URL="http://3.36.219.242:8080"
+
+# Credential domain 설정 (환경 변수 우선, 없으면 기본값 todolist_dev)
+CREDENTIAL_DOMAIN="${CREDENTIAL_DOMAIN:-todolist_dev}"
 
 # Python 실행 경로 설정 (가상환경 우선, 없으면 시스템 python3)
 if [ -n "$PYTHON" ] && [ -f "$PYTHON" ]; then
@@ -70,26 +73,64 @@ else:
     fi
     
     echo "📤 Updating KAKAO_ACCESS_TOKEN credential..."
+    # credential 정보 가져오기
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_ACCESS_TOKEN/config.xml")
+    
+    # XML에서 secret 값만 업데이트 (Python 사용)
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = sys.argv[1]
+print(ET.tostring(root, encoding='unicode'))
+" "$KAKAO_ACCESS")
+    
+    # credential 업데이트
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/json" \
-        -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"KAKAO_ACCESS_TOKEN\", \"secret\":\"$KAKAO_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/KAKAO_ACCESS_TOKEN")
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_ACCESS_TOKEN/config.xml")
     
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update KAKAO_ACCESS_TOKEN (HTTP $HTTP_CODE)"
         cat /tmp/curl_response.txt
         exit 1
     fi
     
     echo "📤 Updating KAKAO_REFRESH_TOKEN credential..."
+    # credential 정보 가져오기
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_REFRESH_TOKEN/config.xml")
+    
+    # XML에서 secret 값만 업데이트
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = sys.argv[1]
+print(ET.tostring(root, encoding='unicode'))
+" "$KAKAO_REFRESH")
+    
+    # credential 업데이트
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/json" \
-        -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"KAKAO_REFRESH_TOKEN\", \"secret\":\"$KAKAO_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/KAKAO_REFRESH_TOKEN")
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_REFRESH_TOKEN/config.xml")
     
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update KAKAO_REFRESH_TOKEN (HTTP $HTTP_CODE)"
         cat /tmp/curl_response.txt
         exit 1
@@ -134,26 +175,64 @@ else:
     fi
     
     echo "📤 Updating NAVER_ACCESS_TOKEN credential..."
+    # credential 정보 가져오기
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
+    
+    # XML에서 secret 값만 업데이트
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = sys.argv[1]
+print(ET.tostring(root, encoding='unicode'))
+" "$NAVER_ACCESS")
+    
+    # credential 업데이트
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/json" \
-        -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"NAVER_ACCESS_TOKEN\", \"secret\":\"$NAVER_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/NAVER_ACCESS_TOKEN")
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
     
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update NAVER_ACCESS_TOKEN (HTTP $HTTP_CODE)"
         cat /tmp/curl_response.txt
         exit 1
     fi
     
     echo "📤 Updating NAVER_REFRESH_TOKEN credential..."
+    # credential 정보 가져오기
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
+    
+    # XML에서 secret 값만 업데이트
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = sys.argv[1]
+print(ET.tostring(root, encoding='unicode'))
+" "$NAVER_REFRESH")
+    
+    # credential 업데이트
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/json" \
-        -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"NAVER_REFRESH_TOKEN\", \"secret\":\"$NAVER_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/NAVER_REFRESH_TOKEN")
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
     
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update NAVER_REFRESH_TOKEN (HTTP $HTTP_CODE)"
         cat /tmp/curl_response.txt
         exit 1
@@ -197,26 +276,64 @@ else:
     fi
     
     echo "📤 Updating JWT_TOKEN credential..."
+    # credential 정보 가져오기
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_TOKEN/config.xml")
+    
+    # XML에서 secret 값만 업데이트
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = sys.argv[1]
+print(ET.tostring(root, encoding='unicode'))
+" "$JWT_ACCESS")
+    
+    # credential 업데이트
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/json" \
-        -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"JWT_TOKEN\", \"secret\":\"$JWT_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/JWT_TOKEN")
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_TOKEN/config.xml")
     
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update JWT_TOKEN (HTTP $HTTP_CODE)"
         cat /tmp/curl_response.txt
         exit 1
     fi
     
     echo "📤 Updating JWT_REFRESH_TOKEN credential..."
+    # credential 정보 가져오기
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_REFRESH_TOKEN/config.xml")
+    
+    # XML에서 secret 값만 업데이트
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = sys.argv[1]
+print(ET.tostring(root, encoding='unicode'))
+" "$JWT_REFRESH")
+    
+    # credential 업데이트
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/json" \
-        -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"JWT_REFRESH_TOKEN\", \"secret\":\"$JWT_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/JWT_REFRESH_TOKEN")
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_REFRESH_TOKEN/config.xml")
     
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update JWT_REFRESH_TOKEN (HTTP $HTTP_CODE)"
         cat /tmp/curl_response.txt
         exit 1

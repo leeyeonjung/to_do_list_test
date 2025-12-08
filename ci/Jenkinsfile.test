@@ -30,10 +30,14 @@ pipeline {
                 script {
                     dir(env.WORKSPACE_DIR) {
                         sh '''
+                            # 가상환경 생성
                             python3 -m venv venv
-                            venv/bin/pip install --upgrade pip
-                            venv/bin/pip install -r requirements.txt
-                            venv/bin/playwright install chromium
+
+                            # 가상환경 활성화 및 의존성 설치
+                            source venv/bin/activate
+                            pip install --upgrade pip
+                            pip install -r requirements.txt
+                            playwright install chromium
                         '''
                     }
                 }

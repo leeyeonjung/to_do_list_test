@@ -40,7 +40,7 @@ def update_jenkins_credential(credential_id: str, new_value: str):
     # -----------------------------
     # 2) Credential XML 생성
     # -----------------------------
-    api_url = f"{jenkins_url}/credentials/store/system/domain/_/credential/{credential_id}/config.xml"
+    api_url = f"{jenkins_url}/credentials/store/system/domain/todolist_dev/credential/{credential_id}/config.xml"
 
     xml_data = f"""
 <com.cloudbees.plugins.credentials.impl.StringCredentialsImpl>

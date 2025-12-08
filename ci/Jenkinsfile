@@ -94,13 +94,14 @@ pipeline {
             }
         }
 
-
         stage('Run Tests') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
 
                         withCredentials([
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+
                             string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
                             string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
                             string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
@@ -110,11 +111,30 @@ pipeline {
 
                             sh '''
                                 set +x
+                                echo "📌 Loading ENV_FILE and Tokens..."
+
+                                # ⭐ 테스트 단계에서도 반드시 .env-dev-test 전달
+                                export ENV_FILE="${ENV_FILE}"
+
+                                # OAuth tokens
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
                                 export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
                                 export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
+
+                                ###########################################
+                                # 🔥 BACKEND_BASE_URL 정규화 (개행 제거)
+                                ###########################################
+                                export BACKEND_BASE_URL="$(
+                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
+                                    | sed 's/^"//;s/"$//' \
+                                    | tr -d '\\r' \
+                                    | tr -d '\\n' \
+                                    | tr -d ' '
+                                )"
+                                echo "[DEBUG] TEST BACKEND_BASE_URL=$BACKEND_BASE_URL"
+
                                 set -x
 
                                 ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true

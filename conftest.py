@@ -17,6 +17,7 @@ from src.utils.token_validator import (
     ensure_valid_kakao_token,
     ensure_valid_naver_token,
     validate_jwt_token,
+    validate_and_refresh_all_tokens,
 )
 
 log = logging.getLogger(__name__)
@@ -112,7 +113,8 @@ def _check_frontend_health() -> bool:
 def pytest_sessionstart(session: pytest.Session) -> None:  # type: ignore[override]
     """
     pytest 세션 시작 시 가장 먼저 호출되어
-    백엔드/프론트엔드 헬스 체크를 수행하고,
+    1. 백엔드/프론트엔드 헬스 체크를 수행하고,
+    2. 토큰 검증 및 갱신을 수행한다.
     둘 중 하나라도 실패하면 전체 테스트를 종료한다.
     """
     log.info("[HEALTH] 테스트 실행 전 서버 상태 점검 시작")
@@ -125,7 +127,9 @@ def pytest_sessionstart(session: pytest.Session) -> None:  # type: ignore[overri
         log.error(msg)
         pytest.exit(msg, returncode=1)
 
-    log.info("[HEALTH] 서버 헬스 체크 통과. 테스트를 계속 진행합니다.")
+    log.info("[HEALTH] 서버 헬스 체크 통과.")
+    
+    log.info("[HEALTH] 테스트를 계속 진행합니다.")
 
 
 # JWT Token Fixtures
@@ -135,7 +139,7 @@ def jwt_token(api_base_url):
     JWT 토큰 fixture
 
     기본값은 테스트용 /api/auth/test-token을 사용하여 JWT를 발급하고,
-    .env에 WEB_TEST_JWT_TOKEN / WEB_TEST_JWT_USER를 갱신합니다.
+    .env에 JWT_TOKEN / JWT_USER를 갱신합니다.
 
     소셜 로그인(Kakao/Naver) 플로우를 테스트할 때는
     --login-mode=kakao|naver 옵션을 사용하고, 이 fixture를 쓰지 않는
@@ -150,7 +154,7 @@ def jwt_token(api_base_url):
     log.info("JWT 발급 모드: test (테스트용 /api/auth/test-token 사용)")
 
     # 기존 토큰 확인
-    existing_token = os.getenv("WEB_TEST_JWT_TOKEN")
+    existing_token = os.getenv("JWT_TOKEN")
 
     # 기존 토큰이 있으면 유효성 검증
     if existing_token:

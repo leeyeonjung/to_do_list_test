@@ -53,6 +53,27 @@ def get_env_value(env_path: Path, key: str) -> Optional[str]:
     return None
 
 
+def _upsert_env_value(env_path: Path, key: str, value: str) -> None:
+    """
+    .env 파일에서 key를 찾아 값 업데이트 (없으면 추가)
+    """
+    if not env_path.exists():
+        log.error(f".env 파일을 찾을 수 없습니다: {env_path}")
+        return
+    with open(env_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    pattern = rf"^{re.escape(key)}=.*$"
+    replacement = f"{key}={value}"
+    if re.search(pattern, content, re.MULTILINE):
+        content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+    else:
+        content += f"\n{replacement}\n"
+
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+
 # JWT Token Functions
 def get_jwt_token(
     backend_base_url: str,
@@ -114,7 +135,7 @@ def update_jwt_env_file(
     user_payload: Dict,
 ) -> None:
     """
-    .env 파일의 WEB_TEST_JWT_TOKEN와 WEB_TEST_JWT_USER 값을 업데이트
+    .env 파일의 JWT_TOKEN와 JWT_USER 값을 업데이트
 
     Args:
         env_path: .env 파일 경로
@@ -129,26 +150,26 @@ def update_jwt_env_file(
     with open(env_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    # WEB_TEST_JWT_TOKEN 업데이트
-    token_pattern = r"^WEB_TEST_JWT_TOKEN=.*$"
-    token_replacement = f"WEB_TEST_JWT_TOKEN={token}"
+    # JWT_TOKEN 업데이트
+    token_pattern = r"^JWT_TOKEN=.*$"
+    token_replacement = f"JWT_TOKEN={token}"
 
     if re.search(token_pattern, content, re.MULTILINE):
         content = re.sub(token_pattern, token_replacement, content, flags=re.MULTILINE)
     else:
         # 없으면 추가
-        content += f"\nWEB_TEST_JWT_TOKEN={token}\n"
+        content += f"\nJWT_TOKEN={token}\n"
 
-    # WEB_TEST_JWT_USER 업데이트 (JSON 문자열로 변환)
+    # JWT_USER 업데이트 (JSON 문자열로 변환)
     user_json = json.dumps(user_payload, ensure_ascii=False)
-    user_pattern = r"^WEB_TEST_JWT_USER=.*$"
-    user_replacement = f"WEB_TEST_JWT_USER={user_json}"
+    user_pattern = r"^JWT_USER=.*$"
+    user_replacement = f"JWT_USER={user_json}"
 
     if re.search(user_pattern, content, re.MULTILINE):
         content = re.sub(user_pattern, user_replacement, content, flags=re.MULTILINE)
     else:
         # 없으면 추가
-        content += f"\nWEB_TEST_JWT_USER={user_json}\n"
+        content += f"\nJWT_USER={user_json}\n"
 
     # .env 파일 쓰기
     with open(env_path, "w", encoding="utf-8") as f:
@@ -195,6 +216,56 @@ def validate_jwt_token(
     else:
         log.warning(f"토큰 검증 중 예상치 못한 상태 코드: {response.status_code}")
         return False, None
+
+
+def refresh_jwt_token(
+    backend_base_url: str,
+    refresh_token: str,
+    access_token: Optional[str] = None,
+    endpoint: str = "/api/auth/refresh"
+) -> Optional[Dict]:
+    """
+    JWT RefreshToken을 사용하여 새로운 AccessToken 발급
+
+    Args:
+        backend_base_url: 백엔드 기본 URL
+        refresh_token: JWT RefreshToken (필수)
+        access_token: 기존 JWT AccessToken (선택)
+        endpoint: 토큰 갱신 엔드포인트 (기본값: "/api/auth/refresh")
+
+    Returns:
+        dict: {"token": str, "user": dict, "refreshed": bool} 형식의 응답 데이터, 실패 시 None
+        - token: 새로운 또는 기존 access token
+        - user: 사용자 정보
+        - refreshed: 새로 발급되면 True, 기존 토큰이 유효하면 False
+    """
+    url = f"{backend_base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "refreshToken": refresh_token
+    }
+    
+    if access_token:
+        payload["token"] = access_token
+    
+    log.info(f"JWT 토큰 갱신 요청: {url}")
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        log.info(f"JWT 토큰 갱신 성공 (refreshed: {data.get('refreshed', False)})")
+        return data
+    elif response.status_code in [400, 401]:
+        log.warning(f"JWT RefreshToken이 유효하지 않습니다: {response.status_code}")
+        return None
+    else:
+        log.error(f"JWT 토큰 갱신 실패: {response.status_code} - {response.text}")
+        return None
 
 
 def fetch_and_update_jwt_token(
@@ -302,7 +373,7 @@ def ensure_valid_jwt_token(
     
     # .env에서 기존 토큰 확인
     load_dotenv(env_path)
-    existing_token = os.getenv("WEB_TEST_JWT_TOKEN")
+    existing_token = os.getenv("JWT_TOKEN")
     
     # 기존 토큰이 있고 유효한지 확인
     if existing_token:
@@ -426,7 +497,7 @@ def update_oauth_env_file(
 ) -> None:
     """
     .env 파일의 OAuth RefreshToken 업데이트 (공통 함수)
-    (WEB_TEST_JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
+    (JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
 
     Args:
         env_path: .env 파일 경로
@@ -615,7 +686,7 @@ def update_kakao_env_file(
 ) -> None:
     """
     .env 파일의 Kakao RefreshToken 업데이트
-    (WEB_TEST_JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
+    (JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
 
     Args:
         env_path: .env 파일 경로
@@ -706,7 +777,7 @@ def update_naver_env_file(
 ) -> None:
     """
     .env 파일의 Naver RefreshToken 업데이트
-    (WEB_TEST_JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
+    (JWT_TOKEN은 API 엔드포인트로만 업데이트됨)
 
     Args:
         env_path: .env 파일 경로
@@ -738,6 +809,183 @@ def ensure_valid_naver_token(
         backend_base_url=backend_base_url,
         env_path=env_path
     )
+
+
+def validate_and_refresh_all_tokens(
+    backend_base_url: Optional[str] = None,
+    env_path: Optional[Path] = None
+) -> Dict[str, Optional[str]]:
+    """
+    모든 토큰(JWT, Kakao, Naver)을 검증하고 필요시 갱신
+    
+    각 토큰을 refresh 엔드포인트로 검증:
+    - JWT: /api/auth/refresh
+    - Kakao: /api/auth/kakao/refresh
+    - Naver: /api/auth/naver/refresh
+    
+    Args:
+        backend_base_url: 백엔드 기본 URL (None이면 .env에서 로드)
+        env_path: .env 파일 경로 (None이면 프로젝트 루트의 .env 사용)
+    
+    Returns:
+        dict: {
+            "jwt_token": Optional[str],  # 갱신된 JWT access token (없으면 None)
+            "kakao_access_token": Optional[str],  # 갱신된 Kakao access token (없으면 None)
+            "naver_access_token": Optional[str],  # 갱신된 Naver access token (없으면 None)
+            "jwt_refreshed": bool,  # JWT가 갱신되었는지 여부
+            "kakao_refreshed": bool,  # Kakao가 갱신되었는지 여부
+            "naver_refreshed": bool  # Naver가 갱신되었는지 여부
+        }
+    """
+    # .env 파일 경로 설정
+    if env_path is None:
+        env_path = get_env_path()
+        if env_path is None:
+            log.error("환경 변수 파일을 찾을 수 없습니다.")
+            return {
+                "jwt_token": None,
+                "kakao_access_token": None,
+                "naver_access_token": None,
+                "jwt_refreshed": False,
+                "kakao_refreshed": False,
+                "naver_refreshed": False
+            }
+    
+    # .env 파일 로드
+    load_dotenv(env_path)
+    
+    # 백엔드 기본 URL 설정
+    if backend_base_url is None:
+        backend_base_url = os.getenv("BACKEND_BASE_URL")
+        if not backend_base_url:
+            log.error("BACKEND_BASE_URL이 .env 파일에 설정되어 있지 않습니다.")
+            return {
+                "jwt_token": None,
+                "kakao_access_token": None,
+                "naver_access_token": None,
+                "jwt_refreshed": False,
+                "kakao_refreshed": False,
+                "naver_refreshed": False
+            }
+    
+    result = {
+        "jwt_token": None,
+        "kakao_access_token": None,
+        "naver_access_token": None,
+        "jwt_refreshed": False,
+        "kakao_refreshed": False,
+        "naver_refreshed": False
+    }
+    
+    # 1. JWT 토큰 검증 및 갱신
+    jwt_token = os.getenv("JWT_TOKEN")
+    jwt_refresh_token = os.getenv("JWT_REFRESH_TOKEN")
+    
+    if jwt_refresh_token:
+        log.info("[TOKEN] JWT 토큰 검증 시작")
+        refresh_response = refresh_jwt_token(
+            backend_base_url=backend_base_url,
+            refresh_token=jwt_refresh_token,
+            access_token=jwt_token,
+            endpoint="/api/auth/refresh"
+        )
+        
+        if refresh_response:
+            new_token = refresh_response.get("token")
+            refreshed = refresh_response.get("refreshed", False)
+            result["jwt_token"] = new_token
+            result["jwt_refreshed"] = refreshed
+            
+            if refreshed and new_token:
+                log.info("[TOKEN] JWT 토큰이 갱신되었습니다.")
+                if env_path:
+                    update_jwt_env_file(env_path, new_token, refresh_response.get("user", {}))
+            else:
+                log.info("[TOKEN] JWT 토큰이 유효합니다 (갱신 불필요)")
+        else:
+            log.warning("[TOKEN] JWT RefreshToken이 유효하지 않습니다.")
+    else:
+        log.warning("[TOKEN] JWT_REFRESH_TOKEN이 설정되어 있지 않습니다.")
+    
+    # 2. Kakao 토큰 검증 및 갱신
+    kakao_refresh_token = os.getenv("KAKAO_REFRESH_TOKEN")
+    
+    if kakao_refresh_token:
+        log.info("[TOKEN] Kakao 토큰 검증 시작")
+        refresh_response = refresh_oauth_token(
+            backend_base_url=backend_base_url,
+            refresh_token=kakao_refresh_token,
+            provider="kakao",
+            endpoint="/api/auth/kakao/refresh"
+        )
+        
+        if refresh_response:
+            new_token = refresh_response.get("token")
+            new_refresh_token = refresh_response.get("refreshToken")
+            result["kakao_access_token"] = new_token
+            result["kakao_refreshed"] = True
+            
+            if env_path:
+                if new_refresh_token:
+                    update_oauth_env_file(env_path, refresh_token=new_refresh_token, provider="kakao")
+                if new_token:
+                    _upsert_env_value(env_path, "KAKAO_ACCESS_TOKEN", new_token)
+            
+            log.info("[TOKEN] Kakao 토큰이 갱신되었습니다.")
+        else:
+            log.warning("[TOKEN] Kakao RefreshToken이 유효하지 않습니다.")
+    else:
+        log.warning("[TOKEN] KAKAO_REFRESH_TOKEN이 설정되어 있지 않습니다.")
+    
+    # 3. Naver 토큰 검증 및 갱신
+    naver_refresh_token = os.getenv("NAVER_REFRESH_TOKEN")
+    
+    if naver_refresh_token:
+        log.info("[TOKEN] Naver 토큰 검증 시작")
+        refresh_response = refresh_oauth_token(
+            backend_base_url=backend_base_url,
+            refresh_token=naver_refresh_token,
+            provider="naver",
+            endpoint="/api/auth/naver/refresh"
+        )
+        
+        if refresh_response:
+            new_token = refresh_response.get("token")
+            new_refresh_token = refresh_response.get("refreshToken")
+            result["naver_access_token"] = new_token
+            result["naver_refreshed"] = True
+            
+            if env_path:
+                if new_refresh_token:
+                    update_oauth_env_file(env_path, refresh_token=new_refresh_token, provider="naver")
+                # Access token도 업데이트 (NAVER_ACCESS_TOKEN)
+                if new_token:
+                    # .env 파일 읽기
+                    with open(env_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    
+                    # NAVER_ACCESS_TOKEN 업데이트
+                    access_token_pattern = r"^NAVER_ACCESS_TOKEN=.*$"
+                    access_token_replacement = f"NAVER_ACCESS_TOKEN={new_token}"
+                    
+                    if re.search(access_token_pattern, content, re.MULTILINE):
+                        content = re.sub(access_token_pattern, access_token_replacement, content, flags=re.MULTILINE)
+                    else:
+                        content += f"\nNAVER_ACCESS_TOKEN={new_token}\n"
+                    
+                    # .env 파일 쓰기
+                    with open(env_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+            
+            log.info("[TOKEN] Naver 토큰이 갱신되었습니다.")
+        else:
+            log.warning("[TOKEN] Naver RefreshToken이 유효하지 않습니다.")
+    else:
+        log.warning("[TOKEN] NAVER_REFRESH_TOKEN이 설정되어 있지 않습니다.")
+    
+    return result
+
+
 
 
 # Main Script

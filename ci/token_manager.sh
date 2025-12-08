@@ -40,123 +40,125 @@ BACKEND_BASE_URL="$(
 echo "🌐 BACKEND_BASE_URL = $BACKEND_BASE_URL"
 
 # --- 2. Kakao Token 검증 및 갱신 -------------------------
-KAKAO_RESULT=$(BACKEND_BASE_URL="$BACKEND_BASE_URL" KAKAO_ACCESS_TOKEN="$KAKAO_ACCESS_TOKEN" $PYTHON_CMD -c "
-import sys
-import os
-sys.path.insert(0, '.')
-from src.utils.token_validator import validate_oauth_token
-result = validate_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['KAKAO_ACCESS_TOKEN'], '/api/auth/kakao')
-print('True' if result else 'False')
-")
-echo "🔍 KAKAO_RESULT = $KAKAO_RESULT"
-if [[ "$KAKAO_RESULT" == "True" ]]; then
-    echo "🟢 Kakao Token is VALID"
-else
-    echo "🔴 Kakao Token is INVALID - Refreshing..."
-    BACKEND_BASE_URL="$BACKEND_BASE_URL" KAKAO_REFRESH_TOKEN="$KAKAO_REFRESH_TOKEN" $PYTHON_CMD -c "
-import sys
-import json
-import os
-sys.path.insert(0, '.')
-from src.utils.token_validator import refresh_oauth_token
-result = refresh_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['KAKAO_REFRESH_TOKEN'], '/api/auth/kakao/refresh')
-if result:
-    with open('token.json', 'w') as f:
-        json.dump(result, f)
-    sys.exit(0)
-else:
-    sys.exit(1)
-" || exit 1
-    KAKAO_ACCESS=$(jq -r '.token // .accessToken // .access_token' token.json)
-    KAKAO_REFRESH=$(jq -r '.refreshToken // .refresh_token' token.json)
-    
-    if [ -z "$KAKAO_ACCESS" ] || [ -z "$KAKAO_REFRESH" ]; then
-        echo "❌ Failed to extract tokens from refresh response"
-        exit 1
-    fi
-    
-    echo "📤 Updating KAKAO_ACCESS_TOKEN credential..."
-    CREDENTIAL_XML=$(curl -s -X GET \
-        -u "$JENKINS_USER:$JENKINS_PASS" \
-        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_ACCESS_TOKEN/config.xml")
-    
-    UPDATED_XML=$(echo "$CREDENTIAL_XML" | KAKAO_ACCESS="$KAKAO_ACCESS" $PYTHON_CMD -c "
-import sys
-import xml.etree.ElementTree as ET
-import os
-xml_str = sys.stdin.read()
-root = ET.fromstring(xml_str)
-secret_elem = root.find('.//secret')
-if secret_elem is None:
-    for elem in root.iter():
-        if elem.tag.endswith('secret') or elem.tag == 'secret':
-            secret_elem = elem
-            break
-if secret_elem is None:
-    secret_elem = ET.SubElement(root, 'secret')
-else:
-    # secret-redacted 요소가 있으면 제거
-    for child in list(secret_elem):
-        if 'secret-redacted' in child.tag or 'redacted' in child.tag:
-            secret_elem.remove(child)
-secret_elem.text = os.environ['KAKAO_ACCESS']
-print(ET.tostring(root, encoding='unicode'))
-")
-    
-    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
-        -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/xml" \
-        -d "$UPDATED_XML" \
-        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_ACCESS_TOKEN/config.xml")
-    
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
-        echo "❌ Failed to update KAKAO_ACCESS_TOKEN (HTTP $HTTP_CODE)"
-        cat /tmp/curl_response.txt
-        exit 1
-    fi
-    
-    echo "📤 Updating KAKAO_REFRESH_TOKEN credential..."
-    CREDENTIAL_XML=$(curl -s -X GET \
-        -u "$JENKINS_USER:$JENKINS_PASS" \
-        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_REFRESH_TOKEN/config.xml")
-    
-    UPDATED_XML=$(echo "$CREDENTIAL_XML" | KAKAO_REFRESH="$KAKAO_REFRESH" $PYTHON_CMD -c "
-import sys
-import xml.etree.ElementTree as ET
-import os
-xml_str = sys.stdin.read()
-root = ET.fromstring(xml_str)
-secret_elem = root.find('.//secret')
-if secret_elem is None:
-    for elem in root.iter():
-        if elem.tag.endswith('secret') or elem.tag == 'secret':
-            secret_elem = elem
-            break
-if secret_elem is None:
-    secret_elem = ET.SubElement(root, 'secret')
-else:
-    # secret-redacted 요소가 있으면 제거
-    for child in list(secret_elem):
-        if 'secret-redacted' in child.tag or 'redacted' in child.tag:
-            secret_elem.remove(child)
-secret_elem.text = os.environ['KAKAO_REFRESH']
-print(ET.tostring(root, encoding='unicode'))
-")
-    
-    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
-        -u "$JENKINS_USER:$JENKINS_PASS" \
-        -H "Content-Type: application/xml" \
-        -d "$UPDATED_XML" \
-        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_REFRESH_TOKEN/config.xml")
-    
-    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
-        echo "❌ Failed to update KAKAO_REFRESH_TOKEN (HTTP $HTTP_CODE)"
-        cat /tmp/curl_response.txt
-        exit 1
-    fi
-    
-    echo "✅ Kakao tokens refreshed and updated"
-fi
+# 카카오 로직 주석처리 (임시)
+# KAKAO_RESULT=$(BACKEND_BASE_URL="$BACKEND_BASE_URL" KAKAO_ACCESS_TOKEN="$KAKAO_ACCESS_TOKEN" $PYTHON_CMD -c "
+# import sys
+# import os
+# sys.path.insert(0, '.')
+# from src.utils.token_validator import validate_oauth_token
+# result = validate_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['KAKAO_ACCESS_TOKEN'], '/api/auth/kakao')
+# print('True' if result else 'False')
+# ")
+# echo "🔍 KAKAO_RESULT = $KAKAO_RESULT"
+# if [[ "$KAKAO_RESULT" == "True" ]]; then
+#     echo "🟢 Kakao Token is VALID"
+# else
+#     echo "🔴 Kakao Token is INVALID - Refreshing..."
+#     BACKEND_BASE_URL="$BACKEND_BASE_URL" KAKAO_REFRESH_TOKEN="$KAKAO_REFRESH_TOKEN" $PYTHON_CMD -c "
+# import sys
+# import json
+# import os
+# sys.path.insert(0, '.')
+# from src.utils.token_validator import refresh_oauth_token
+# result = refresh_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['KAKAO_REFRESH_TOKEN'], '/api/auth/kakao/refresh')
+# if result:
+#     with open('token.json', 'w') as f:
+#         json.dump(result, f)
+#     sys.exit(0)
+# else:
+#     sys.exit(1)
+# " || exit 1
+#     KAKAO_ACCESS=$(jq -r '.token // .accessToken // .access_token' token.json)
+#     KAKAO_REFRESH=$(jq -r '.refreshToken // .refresh_token' token.json)
+#     
+#     if [ -z "$KAKAO_ACCESS" ] || [ -z "$KAKAO_REFRESH" ]; then
+#         echo "❌ Failed to extract tokens from refresh response"
+#         exit 1
+#     fi
+#     
+#     echo "📤 Updating KAKAO_ACCESS_TOKEN credential..."
+#     CREDENTIAL_XML=$(curl -s -X GET \
+#         -u "$JENKINS_USER:$JENKINS_PASS" \
+#         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_ACCESS_TOKEN/config.xml")
+#     
+#     UPDATED_XML=$(echo "$CREDENTIAL_XML" | KAKAO_ACCESS="$KAKAO_ACCESS" $PYTHON_CMD -c "
+# import sys
+# import xml.etree.ElementTree as ET
+# import os
+# xml_str = sys.stdin.read()
+# root = ET.fromstring(xml_str)
+# secret_elem = root.find('.//secret')
+# if secret_elem is None:
+#     for elem in root.iter():
+#         if elem.tag.endswith('secret') or elem.tag == 'secret':
+#             secret_elem = elem
+#             break
+# if secret_elem is None:
+#     secret_elem = ET.SubElement(root, 'secret')
+# else:
+#     # secret-redacted 요소가 있으면 제거
+#     for child in list(secret_elem):
+#         if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+#             secret_elem.remove(child)
+# secret_elem.text = os.environ['KAKAO_ACCESS']
+# print(ET.tostring(root, encoding='unicode'))
+# ")
+#     
+#     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
+#         -u "$JENKINS_USER:$JENKINS_PASS" \
+#         -H "Content-Type: application/xml" \
+#         -d "$UPDATED_XML" \
+#         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_ACCESS_TOKEN/config.xml")
+#     
+#     if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
+#         echo "❌ Failed to update KAKAO_ACCESS_TOKEN (HTTP $HTTP_CODE)"
+#         cat /tmp/curl_response.txt
+#         exit 1
+#     fi
+#     
+#     echo "📤 Updating KAKAO_REFRESH_TOKEN credential..."
+#     CREDENTIAL_XML=$(curl -s -X GET \
+#         -u "$JENKINS_USER:$JENKINS_PASS" \
+#         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_REFRESH_TOKEN/config.xml")
+#     
+#     UPDATED_XML=$(echo "$CREDENTIAL_XML" | KAKAO_REFRESH="$KAKAO_REFRESH" $PYTHON_CMD -c "
+# import sys
+# import xml.etree.ElementTree as ET
+# import os
+# xml_str = sys.stdin.read()
+# root = ET.fromstring(xml_str)
+# secret_elem = root.find('.//secret')
+# if secret_elem is None:
+#     for elem in root.iter():
+#         if elem.tag.endswith('secret') or elem.tag == 'secret':
+#             secret_elem = elem
+#             break
+# if secret_elem is None:
+#     secret_elem = ET.SubElement(root, 'secret')
+# else:
+#     # secret-redacted 요소가 있으면 제거
+#     for child in list(secret_elem):
+#         if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+#             secret_elem.remove(child)
+# secret_elem.text = os.environ['KAKAO_REFRESH']
+# print(ET.tostring(root, encoding='unicode'))
+# ")
+#     
+#     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
+#         -u "$JENKINS_USER:$JENKINS_PASS" \
+#         -H "Content-Type: application/xml" \
+#         -d "$UPDATED_XML" \
+#         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/KAKAO_REFRESH_TOKEN/config.xml")
+#     
+#     if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
+#         echo "❌ Failed to update KAKAO_REFRESH_TOKEN (HTTP $HTTP_CODE)"
+#         cat /tmp/curl_response.txt
+#         exit 1
+#     fi
+#     
+#     echo "✅ Kakao tokens refreshed and updated"
+# fi
+echo "⏭️  Kakao Token logic skipped (commented out)"
 
 # --- 3. Naver Token 검증 및 갱신 -------------------------
 NAVER_RESULT=$(BACKEND_BASE_URL="$BACKEND_BASE_URL" NAVER_ACCESS_TOKEN="$NAVER_ACCESS_TOKEN" $PYTHON_CMD -c "

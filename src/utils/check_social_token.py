@@ -30,11 +30,8 @@ def is_naver_token_valid(access_token: str) -> bool:
     url = "https://openapi.naver.com/v1/nid/me"
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    try:
-        res = requests.get(url, headers=headers, timeout=5)
-        return res.status_code == 200
-    except Exception:
-        return False
+    res = requests.get(url, headers=headers, timeout=5)
+    return res.status_code == 200
 
 
 def is_kakao_token_valid(access_token: str) -> bool:
@@ -45,11 +42,8 @@ def is_kakao_token_valid(access_token: str) -> bool:
     url = "https://kapi.kakao.com/v1/user/access_token_info"
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    try:
-        res = requests.get(url, headers=headers, timeout=5)
-        return res.status_code == 200
-    except Exception:
-        return False
+    res = requests.get(url, headers=headers, timeout=5)
+    return res.status_code == 200
 
 
 # ============================================================

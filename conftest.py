@@ -14,8 +14,7 @@ from src.actions.web.todo_actions import TodoActions
 from src.utils.env_loader import load_env_files
 from src.utils.token_validator import (
     ensure_valid_jwt_token,
-    ensure_valid_kakao_token,
-    ensure_valid_naver_token,
+    ensure_valid_oauth_token,
     validate_jwt_token,
     validate_and_refresh_all_tokens,
 )
@@ -292,7 +291,10 @@ def web_page(request, login_mode):
         # 소셜 로그인 모드(kakao/naver): .env의 AccessToken/RefreshToken을 사용하여 JWT 발급 후 주입
         if login_mode == "kakao":
             log.info("Kakao 로그인 모드: .env의 KAKAO_ACCESS_TOKEN/REFRESH_TOKEN을 사용하여 JWT 발급")
-            jwt_token = ensure_valid_kakao_token(backend_base_url=request.getfixturevalue("api_base_url"))
+            jwt_token = ensure_valid_oauth_token(
+                provider="kakao",
+                backend_base_url=request.getfixturevalue("api_base_url"),
+            )
             
             if not jwt_token:
                 log.error("Kakao JWT 토큰 발급에 실패했습니다.")
@@ -311,7 +313,10 @@ def web_page(request, login_mode):
         
         if login_mode == "naver":
             log.info("Naver 로그인 모드: .env의 NAVER_ACCESS_TOKEN/REFRESH_TOKEN을 사용하여 JWT 발급")
-            jwt_token = ensure_valid_naver_token(backend_base_url=request.getfixturevalue("api_base_url"))
+            jwt_token = ensure_valid_oauth_token(
+                provider="naver",
+                backend_base_url=request.getfixturevalue("api_base_url"),
+            )
             
             if not jwt_token:
                 log.error("Naver JWT 토큰 발급에 실패했습니다.")

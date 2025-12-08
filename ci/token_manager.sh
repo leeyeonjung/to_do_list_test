@@ -220,11 +220,36 @@ except Exception as e:
         cat /tmp/naver_refresh_output.txt 2>/dev/null || echo "(empty)"
         echo "[DEBUG] Python stderr:"
         cat /tmp/naver_refresh_error.txt 2>/dev/null || echo "(empty)"
-        if [ -f "token.json" ]; then
-            echo "[DEBUG] token.json contents:"
-            cat token.json
+        
+        # 401 에러 체크 (invalid refresh_token)
+        if grep -q "401" /tmp/naver_refresh_error.txt 2>/dev/null || grep -q "invalid refresh_token" /tmp/naver_refresh_error.txt 2>/dev/null; then
+            echo ""
+            echo "⚠️  WARNING: Naver refresh token is invalid or expired"
+            echo "⚠️  The refresh token stored in Jenkins credentials needs to be manually updated"
+            echo "⚠️  Please obtain a new Naver refresh token and update the NAVER_REFRESH_TOKEN credential"
+            echo ""
+            # 리프레시 토큰이 유효하지 않아도 스크립트는 계속 진행 (JWT 체크 등)
+            echo "⚠️  Skipping Naver token refresh and continuing with other tokens..."
+        else
+            # 다른 종류의 에러인 경우
+            if [ -f "token.json" ]; then
+                echo "[DEBUG] token.json contents:"
+                cat token.json
+            fi
+            exit 1
         fi
-        exit 1
+    fi
+    
+    # Python 스크립트가 실패했는데도 계속 진행해야 하는 경우 (401 에러 등)
+    if [ $PYTHON_EXIT -ne 0 ]; then
+        # 이미 위에서 401 에러는 처리했으므로, 여기서는 실제로 token.json이 있는지 확인
+        if [ ! -f "token.json" ]; then
+            echo "⚠️  Naver token refresh failed, but continuing with other tokens..."
+            # Naver 토큰 갱신 실패했지만 다른 토큰 체크는 계속 진행
+            set -e  # 다시 set -e 활성화
+            # 여기서 이 블록을 종료하고 다음 토큰(JWT) 체크로 진행
+            # (bash에서 else 블록이 끝나면 자동으로 다음으로 진행됨)
+        fi
     fi
     
     if [ ! -f "token.json" ]; then
@@ -233,8 +258,17 @@ except Exception as e:
         cat /tmp/naver_refresh_output.txt 2>/dev/null || echo "(empty)"
         echo "[DEBUG] Python stderr:"
         cat /tmp/naver_refresh_error.txt 2>/dev/null || echo "(empty)"
-        exit 1
+        # 401 에러가 아닌 경우에만 종료
+        if ! grep -q "401" /tmp/naver_refresh_error.txt 2>/dev/null && ! grep -q "invalid refresh_token" /tmp/naver_refresh_error.txt 2>/dev/null; then
+            exit 1
+        else
+            echo "⚠️  Skipping Naver credential update due to invalid refresh token"
+            set -e  # 다시 set -e 활성화
+        fi
     fi
+    
+    # token.json이 있고 Python 스크립트가 성공한 경우에만 credential 업데이트 진행
+    if [ -f "token.json" ] && [ $PYTHON_EXIT -eq 0 ]; then
     
     echo "📄 Refresh response saved to token.json"
     echo "[DEBUG] Checking token.json content..."
@@ -298,11 +332,20 @@ except Exception as e:
     fi
     
     echo "$UPDATED_XML" > /tmp/naver_access_token.xml
+    echo "[DEBUG] Sending XML to update NAVER_ACCESS_TOKEN credential..."
+    echo "[DEBUG] XML size: $(wc -c < /tmp/naver_access_token.xml) bytes"
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/xml" \
         --data-binary @/tmp/naver_access_token.xml \
         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
+    
+    echo "[DEBUG] Jenkins API response code: $HTTP_CODE"
+    if [ -s /tmp/curl_response.txt ]; then
+        echo "[DEBUG] Jenkins API response (first 200 chars):"
+        head -c 200 /tmp/curl_response.txt
+        echo ""
+    fi
     
     if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update NAVER_ACCESS_TOKEN (HTTP $HTTP_CODE)"
@@ -311,7 +354,33 @@ except Exception as e:
         exit 1
     fi
     
-    echo "✅ NAVER_ACCESS_TOKEN credential updated successfully"
+    echo "✅ NAVER_ACCESS_TOKEN credential updated successfully (HTTP $HTTP_CODE)"
+    
+    # 업데이트 확인: 업데이트된 credential 값을 다시 가져와서 확인
+    echo "[DEBUG] Verifying NAVER_ACCESS_TOKEN credential update..."
+    VERIFY_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
+    
+    VERIFY_TOKEN=$(echo "$VERIFY_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is not None and secret_elem.text:
+    print(secret_elem.text[:20] + '...')
+else:
+    print('NOT_FOUND')
+" 2>/dev/null)
+    
+    if [ "$VERIFY_TOKEN" = "${NAVER_ACCESS:0:20}..." ]; then
+        echo "✅ Verified: NAVER_ACCESS_TOKEN credential is correctly updated"
+    else
+        echo "⚠️  WARNING: NAVER_ACCESS_TOKEN credential may not be updated correctly"
+        echo "   Expected: ${NAVER_ACCESS:0:20}..."
+        echo "   Got: $VERIFY_TOKEN"
+    fi
     
     echo "📤 Updating NAVER_REFRESH_TOKEN credential..."
     CREDENTIAL_XML=$(curl -s -X GET \
@@ -355,11 +424,20 @@ except Exception as e:
     fi
     
     echo "$UPDATED_XML" > /tmp/naver_refresh_token.xml
+    echo "[DEBUG] Sending XML to update NAVER_REFRESH_TOKEN credential..."
+    echo "[DEBUG] XML size: $(wc -c < /tmp/naver_refresh_token.xml) bytes"
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/xml" \
         --data-binary @/tmp/naver_refresh_token.xml \
         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
+    
+    echo "[DEBUG] Jenkins API response code: $HTTP_CODE"
+    if [ -s /tmp/curl_response.txt ]; then
+        echo "[DEBUG] Jenkins API response (first 200 chars):"
+        head -c 200 /tmp/curl_response.txt
+        echo ""
+    fi
     
     if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
         echo "❌ Failed to update NAVER_REFRESH_TOKEN (HTTP $HTTP_CODE)"
@@ -368,9 +446,36 @@ except Exception as e:
         exit 1
     fi
     
-    echo "✅ NAVER_REFRESH_TOKEN credential updated successfully"
+    echo "✅ NAVER_REFRESH_TOKEN credential updated successfully (HTTP $HTTP_CODE)"
+    
+    # 업데이트 확인: 업데이트된 credential 값을 다시 가져와서 확인
+    echo "[DEBUG] Verifying NAVER_REFRESH_TOKEN credential update..."
+    VERIFY_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
+    
+    VERIFY_TOKEN=$(echo "$VERIFY_XML" | $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is not None and secret_elem.text:
+    print(secret_elem.text[:20] + '...')
+else:
+    print('NOT_FOUND')
+" 2>/dev/null)
+    
+    if [ "$VERIFY_TOKEN" = "${NAVER_REFRESH:0:20}..." ]; then
+        echo "✅ Verified: NAVER_REFRESH_TOKEN credential is correctly updated"
+    else
+        echo "⚠️  WARNING: NAVER_REFRESH_TOKEN credential may not be updated correctly"
+        echo "   Expected: ${NAVER_REFRESH:0:20}..."
+        echo "   Got: $VERIFY_TOKEN"
+    fi
     
     echo "✅ Naver tokens refreshed and updated"
+    fi  # token.json이 있고 Python 스크립트가 성공한 경우에만
 fi
 
 # --- 4. JWT Token 검증 및 갱신 -------------------------

@@ -144,12 +144,13 @@ def ensure_valid_oauth_token(
     if refresh_endpoint is None:
         refresh_endpoint = f"/api/auth/{provider}/refresh"
 
-    is_valid, resp_data = validate_oauth_token(
+    is_valid = validate_oauth_token(
         backend_base_url, access_token, validate_endpoint
     )
 
-    if is_valid and resp_data and resp_data.get("token"):
-        return resp_data["token"]
+    if is_valid:
+        # 토큰이 유효하면 기존 토큰 사용 (새로 발급받을 필요 없음)
+        return access_token
 
     refresh_resp = refresh_oauth_token(
         backend_base_url, refresh_token, refresh_endpoint

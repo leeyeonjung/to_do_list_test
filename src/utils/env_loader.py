@@ -7,6 +7,7 @@
 """
 import os
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -96,6 +97,34 @@ def get_env_path() -> Optional[Path]:
         return local_env
     
     return None
+
+
+def upsert_env_value(env_path: Path, key: str, value: str) -> None:
+    """
+    env 파일에 key=value를 업데이트하거나 추가합니다.
+    
+    Args:
+        env_path: 환경 변수 파일 경로
+        key: 환경 변수 키
+        value: 환경 변수 값
+    """
+    if not env_path or not env_path.exists():
+        log.error(f".env 파일 없음: {env_path}")
+        return
+
+    with open(env_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    pattern = rf"^{re.escape(key)}=.*$"
+    replacement = f"{key}={value}"
+
+    if re.search(pattern, content, flags=re.MULTILINE):
+        content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+    else:
+        content += f"\n{replacement}\n"
+
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.write(content)
 
 
 # 모듈 로드 시 자동으로 환경 변수 파일 로드

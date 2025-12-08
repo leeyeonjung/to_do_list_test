@@ -56,8 +56,22 @@ pipeline {
                                 set +x
                                 echo "📌 Loading ENV_FILE and Tokens..."
 
-                                # ⭐ 테스트 단계에서도 반드시 .env-dev-test 전달
-                                export ENV_FILE="${ENV_FILE}"
+                                # ⭐ ENV_FILE 미지정/누락 시 워크스페이스의 .env-dev-test로 대체
+                                if [ -z "$ENV_FILE" ]; then
+                                    if [ -f ".env-dev-test" ]; then
+                                        export ENV_FILE="$PWD/.env-dev-test"
+                                        echo "[WARN] ENV_FILE not provided; fallback to $ENV_FILE"
+                                    else
+                                        echo "[ERROR] ENV_FILE not provided and .env-dev-test missing"; exit 1
+                                    fi
+                                elif [ ! -f "$ENV_FILE" ]; then
+                                    if [ -f ".env-dev-test" ]; then
+                                    export ENV_FILE="$PWD/.env-dev-test"
+                                        echo "[WARN] ENV_FILE path missing; fallback to $ENV_FILE"
+                                    else
+                                        echo "[ERROR] ENV_FILE path missing and .env-dev-test missing"; exit 1
+                                    fi
+                                fi
 
                                 # JWT tokens
                                 export JWT_TOKEN="${JWT_TOKEN}"

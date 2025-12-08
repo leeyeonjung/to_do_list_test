@@ -125,8 +125,14 @@ def update_oauth_env_file(env_path: Path, refresh_token: str, provider: str):
     upsert_env_value(env_path, key, refresh_token)
 
 
-def ensure_valid_oauth_token(provider: str, backend_base_url=None, env_path=None,
-                             validate_endpoint=None, refresh_endpoint=None):
+def ensure_valid_oauth_token(
+    provider: str,
+    backend_base_url=None,
+    env_path=None,
+    validate_endpoint=None,
+    refresh_endpoint=None,
+    read_only=False   # ⭐ 추가됨
+):
     provider_upper = provider.upper()
 
     if env_path is None:
@@ -143,7 +149,6 @@ def ensure_valid_oauth_token(provider: str, backend_base_url=None, env_path=None
     if refresh_endpoint is None:
         refresh_endpoint = f"/api/auth/{provider}/refresh"
 
-    # 기존 access 검증
     is_valid, resp_data = validate_oauth_token(
         backend_base_url, access_token, validate_endpoint
     )
@@ -151,7 +156,6 @@ def ensure_valid_oauth_token(provider: str, backend_base_url=None, env_path=None
     if is_valid and resp_data and resp_data.get("token"):
         return resp_data["token"]
 
-    # refresh
     refresh_resp = refresh_oauth_token(
         backend_base_url, refresh_token, refresh_endpoint
     )
@@ -159,10 +163,11 @@ def ensure_valid_oauth_token(provider: str, backend_base_url=None, env_path=None
     new_token = refresh_resp.get("token") if refresh_resp else None
     new_refresh_token = refresh_resp.get("refreshToken") if refresh_resp else None
 
-    if new_refresh_token:
-        update_oauth_env_file(env_path, new_refresh_token, provider)
+    if not read_only:
+        if new_refresh_token:
+            update_oauth_env_file(env_path, new_refresh_token, provider)
 
-    if new_token:
-        upsert_env_value(env_path, f"{provider_upper}_ACCESS_TOKEN", new_token)
+        if new_token:
+            upsert_env_value(env_path, f"{provider_upper}_ACCESS_TOKEN", new_token)
 
     return new_token

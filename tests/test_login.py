@@ -12,7 +12,7 @@ def test_kakao_login(api_base_url):
     백엔드 API를 통해 JWT를 발급받고, 성공적으로 응답이 오면 테스트 통과
     """
     # Kakao JWT 토큰 가져오기
-    kakao_jwt = ensure_valid_oauth_token("kakao", backend_base_url=api_base_url)
+    kakao_jwt = ensure_valid_oauth_token("kakao",backend_base_url=api_base_url,read_only=True)
 
     import logging
     log = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def test_naver_login(api_base_url):
     백엔드 API를 통해 JWT를 발급받고, 성공적으로 응답이 오면 테스트 통과
     """
     # Naver JWT 토큰 가져오기
-    naver_jwt = ensure_valid_oauth_token("naver", backend_base_url=api_base_url)
+    naver_jwt = ensure_valid_oauth_token("naver",backend_base_url=api_base_url,read_only=True)
     
     # JWT 토큰이 성공적으로 발급되었는지 확인
     check.is_not_none(naver_jwt, "Naver JWT 토큰이 발급되지 않았습니다.")

@@ -23,15 +23,19 @@ pipeline {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
-                        sh '''
+                        sh '''#!/bin/bash
                             # 가상환경 생성
                             python3 -m venv venv
-
-                            # 가상환경 활성화 및 의존성 설치
-                            . venv/bin/activate
+                            
+                            # 가상환경 활성화
+                            source venv/bin/activate
+                            
+                            # pip 업그레이드
                             pip install --upgrade pip
+                            
+                            # 의존성 설치
                             pip install -r requirements.txt
-                        '''
+                            '''
                     }
                 }
             }

@@ -69,17 +69,31 @@ else:
         exit 1
     fi
     
-    curl -s -X POST \
+    echo "📤 Updating KAKAO_ACCESS_TOKEN credential..."
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/json" \
         -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"KAKAO_ACCESS_TOKEN\", \"secret\":\"$KAKAO_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/KAKAO_ACCESS_TOKEN" > /dev/null
+        "$JENKINS_URL/credentials/store/system/domain/_/credential/KAKAO_ACCESS_TOKEN")
     
-    curl -s -X POST \
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+        echo "❌ Failed to update KAKAO_ACCESS_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "📤 Updating KAKAO_REFRESH_TOKEN credential..."
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/json" \
         -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"KAKAO_REFRESH_TOKEN\", \"secret\":\"$KAKAO_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/KAKAO_REFRESH_TOKEN" > /dev/null
+        "$JENKINS_URL/credentials/store/system/domain/_/credential/KAKAO_REFRESH_TOKEN")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+        echo "❌ Failed to update KAKAO_REFRESH_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
     
     echo "✅ Kakao tokens refreshed and updated"
 fi
@@ -119,17 +133,31 @@ else:
         exit 1
     fi
     
-    curl -s -X POST \
+    echo "📤 Updating NAVER_ACCESS_TOKEN credential..."
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/json" \
         -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"NAVER_ACCESS_TOKEN\", \"secret\":\"$NAVER_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/NAVER_ACCESS_TOKEN" > /dev/null
+        "$JENKINS_URL/credentials/store/system/domain/_/credential/NAVER_ACCESS_TOKEN")
     
-    curl -s -X POST \
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+        echo "❌ Failed to update NAVER_ACCESS_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "📤 Updating NAVER_REFRESH_TOKEN credential..."
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/json" \
         -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"NAVER_REFRESH_TOKEN\", \"secret\":\"$NAVER_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/NAVER_REFRESH_TOKEN" > /dev/null
+        "$JENKINS_URL/credentials/store/system/domain/_/credential/NAVER_REFRESH_TOKEN")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+        echo "❌ Failed to update NAVER_REFRESH_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
     
     echo "✅ Naver tokens refreshed and updated"
 fi
@@ -168,17 +196,31 @@ else:
         exit 1
     fi
     
-    curl -s -X POST \
+    echo "📤 Updating JWT_TOKEN credential..."
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/json" \
         -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"JWT_TOKEN\", \"secret\":\"$JWT_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/JWT_TOKEN" > /dev/null
+        "$JENKINS_URL/credentials/store/system/domain/_/credential/JWT_TOKEN")
     
-    curl -s -X POST \
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+        echo "❌ Failed to update JWT_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "📤 Updating JWT_REFRESH_TOKEN credential..."
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         -H "Content-Type: application/json" \
         -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"JWT_REFRESH_TOKEN\", \"secret\":\"$JWT_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-        "$JENKINS_URL/credentials/store/system/domain/_/credential/JWT_REFRESH_TOKEN" > /dev/null
+        "$JENKINS_URL/credentials/store/system/domain/_/credential/JWT_REFRESH_TOKEN")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+        echo "❌ Failed to update JWT_REFRESH_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
     
     echo "✅ JWT tokens refreshed and updated"
 fi

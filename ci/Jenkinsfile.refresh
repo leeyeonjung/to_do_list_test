@@ -38,6 +38,8 @@ pipeline {
                     dir(env.WORKSPACE_DIR) {
 
                         withCredentials([
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+
                             string(credentialsId: 'JWT_TOKEN', variable: 'JWT_TOKEN'),
                             string(credentialsId: 'JWT_REFRESH_TOKEN', variable: 'JWT_REFRESH_TOKEN'),
 
@@ -58,18 +60,33 @@ pipeline {
                                 set +x
                                 echo "🔄 Running CI Token Manager..."
 
+                                if [ ! -f "$ENV_FILE" ]; then
+                                    echo "❌ ENV_FILE not found"; exit 1
+                                fi
+
+                                # ⭐ Secret file 내용에서 BACKEND_BASE_URL 직접 export
+                                export BACKEND_BASE_URL="$(
+                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
+                                    | sed 's/^"//;s/"$//' | tr -d '\\r\\n '
+                                )"
+
+                                echo "[DEBUG] BACKEND_BASE_URL=$BACKEND_BASE_URL"
+
                                 export JWT_TOKEN
                                 export JWT_REFRESH_TOKEN
                                 export KAKAO_ACCESS_TOKEN
                                 export KAKAO_REFRESH_TOKEN
                                 export NAVER_ACCESS_TOKEN
                                 export NAVER_REFRESH_TOKEN
+
                                 export JENKINS_USER
                                 export JENKINS_PASS
+                                export CREDENTIAL_DOMAIN=dev
 
                                 ${PYTHON} ci/ci_token_manager.py
                             '''
                         }
+
                     }
                 }
             }

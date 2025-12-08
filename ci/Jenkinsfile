@@ -15,6 +15,9 @@ pipeline {
 
     stages {
 
+        /* -------------------------------------------------------------
+           1. PYTHON VENV SETUP
+        ------------------------------------------------------------- */
         stage('Setup Python Environment') {
             steps {
                 script {
@@ -30,8 +33,10 @@ pipeline {
             }
         }
 
-
-        stage('Run Tests') {
+        /* -------------------------------------------------------------
+           2. TOKEN VALIDATION BEFORE TESTS
+        ------------------------------------------------------------- */
+        stage('Validate Tokens Before Tests') {
             steps {
                 script {
                     dir(env.WORKSPACE_DIR) {
@@ -39,12 +44,14 @@ pipeline {
                         withCredentials([
                             file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
 
-                            string(credentialsId: 'JWT_TOKEN',  variable: 'JWT_TOKEN'),
+                            string(credentialsId: 'JWT_TOKEN', variable: 'JWT_TOKEN'),
                             string(credentialsId: 'JWT_REFRESH_TOKEN', variable: 'JWT_REFRESH_TOKEN'),
-                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
+
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN', variable: 'KAKAO_ACCESS_TOKEN'),
                             string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
-                            string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN', variable: 'NAVER_ACCESS_TOKEN'),
                             string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
+
                             usernamePassword(
                                 credentialsId: 'jenkins-admin',
                                 usernameVariable: 'JENKINS_USER',
@@ -54,55 +61,112 @@ pipeline {
 
                             sh '''
                                 set +x
-                                echo "📌 Loading ENV_FILE and Tokens..."
+                                echo "🔍 Token Validation Stage Start..."
 
-                                # ⭐ ENV_FILE 미지정/누락 시 워크스페이스의 .env-dev-test로 대체
+                                # ENV_FILE 누락 시 fallback
                                 if [ -z "$ENV_FILE" ]; then
                                     if [ -f ".env-dev-test" ]; then
                                         export ENV_FILE="$PWD/.env-dev-test"
                                         echo "[WARN] ENV_FILE not provided; fallback to $ENV_FILE"
                                     else
-                                        echo "[ERROR] ENV_FILE not provided and .env-dev-test missing"; exit 1
+                                        echo "[ERROR] ENV_FILE missing and no fallback .env-dev-test found"; exit 1
                                     fi
                                 elif [ ! -f "$ENV_FILE" ]; then
                                     if [ -f ".env-dev-test" ]; then
-                                    export ENV_FILE="$PWD/.env-dev-test"
-                                        echo "[WARN] ENV_FILE path missing; fallback to $ENV_FILE"
+                                        export ENV_FILE="$PWD/.env-dev-test"
+                                        echo "[WARN] ENV_FILE path invalid; fallback to $ENV_FILE"
                                     else
-                                        echo "[ERROR] ENV_FILE path missing and .env-dev-test missing"; exit 1
+                                        echo "[ERROR] ENV_FILE missing and no fallback available"; exit 1
                                     fi
                                 fi
 
-                                # JWT tokens
+                                #############################################
+                                # BACKEND_BASE_URL 로드 및 정규화
+                                #############################################
+                                export BACKEND_BASE_URL="$(
+                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
+                                        | sed 's/^"//;s/"$//' \
+                                        | tr -d '\\r' | tr -d '\\n' | tr -d ' '
+                                )"
+                                echo "[DEBUG] Loaded BACKEND_BASE_URL=$BACKEND_BASE_URL"
+
+                                #############################################
+                                # Export TOKENs & Jenkins Admin creds
+                                #############################################
                                 export JWT_TOKEN="${JWT_TOKEN}"
                                 export JWT_REFRESH_TOKEN="${JWT_REFRESH_TOKEN}"
-                                # 기존 WEB_TEST_JWT_TOKEN은 사용하지 않음
 
-                                # OAuth tokens
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
                                 export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
 
-                                # Jenkins admin creds (토큰 갱신 시 credential 업데이트용)
                                 export JENKINS_USER="${JENKINS_USER}"
                                 export JENKINS_PASS="${JENKINS_PASS}"
                                 export JENKINS_URL="${JENKINS_URL}"
 
-                                ###########################################
-                                # 🔥 BACKEND_BASE_URL 정규화 (개행 제거)
-                                ###########################################
+                                echo "🚀 Running CI Token Manager (refresh + credential update)"
+                                ${PYTHON} ci/ci_token_manager.py || true
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+
+        /* -------------------------------------------------------------
+           3. RUN TESTS
+        ------------------------------------------------------------- */
+        stage('Run Tests') {
+            steps {
+                script {
+                    dir(env.WORKSPACE_DIR) {
+
+                        withCredentials([
+                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
+
+                            string(credentialsId: 'JWT_TOKEN', variable: 'JWT_TOKEN'),
+                            string(credentialsId: 'JWT_REFRESH_TOKEN', variable: 'JWT_REFRESH_TOKEN'),
+
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN', variable: 'KAKAO_ACCESS_TOKEN'),
+                            string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN', variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN')
+                        ]) {
+
+                            sh '''
+                                set +x
+                                echo "📌 Running Tests..."
+
+                                # ENV_FILE 누락 시 fallback 처리
+                                if [ -z "$ENV_FILE" ]; then
+                                    if [ -f ".env-dev-test" ]; then
+                                        export ENV_FILE="$PWD/.env-dev-test"
+                                        echo "[WARN] ENV_FILE missing; fallback → $ENV_FILE"
+                                    else
+                                        echo "[ERROR] ENV_FILE missing and fallback not found"; exit 1
+                                    fi
+                                fi
+
+                                # Tokens
+                                export JWT_TOKEN="${JWT_TOKEN}"
+                                export JWT_REFRESH_TOKEN="${JWT_REFRESH_TOKEN}"
+                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
+                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
+                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
+                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
+
+                                # BACKEND_BASE_URL 로드
                                 export BACKEND_BASE_URL="$(
                                     grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
-                                    | sed 's/^"//;s/"$//' \
-                                    | tr -d '\\r' \
-                                    | tr -d '\\n' \
-                                    | tr -d ' '
+                                        | sed 's/^"//;s/"$//' \
+                                        | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
+
                                 echo "[DEBUG] TEST BACKEND_BASE_URL=$BACKEND_BASE_URL"
 
                                 set -x
-
                                 ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
                             '''
                         }
@@ -111,6 +175,10 @@ pipeline {
             }
         }
 
+
+        /* -------------------------------------------------------------
+           4. ARCHIVE REPORT
+        ------------------------------------------------------------- */
         stage('Archive Test Report') {
             steps {
                 archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true

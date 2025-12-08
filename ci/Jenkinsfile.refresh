@@ -93,6 +93,10 @@ pipeline {
                                 export JENKINS_PASS
                                 export CREDENTIAL_DOMAIN=todolist_dev
 
+                                # 가상환경의 Python 경로 전달
+                                export PYTHON="${VENV_PATH}/bin/python"
+                                export VENV_PATH="${VENV_PATH}"
+
                                 bash ci/token_manager.sh
                             '''
                         }

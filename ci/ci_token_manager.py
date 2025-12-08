@@ -59,7 +59,7 @@ def update_jenkins_credential(credential_id: str, new_value: str):
     # -----------------------------
     # 3) Credential 업데이트 요청
     # -----------------------------
-    resp = requests.post(
+    resp = requests.put(
         api_url,
         auth=(user, password),
         headers=headers,

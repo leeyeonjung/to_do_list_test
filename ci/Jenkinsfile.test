@@ -34,7 +34,7 @@ pipeline {
                             python3 -m venv venv
 
                             # 가상환경 활성화 및 의존성 설치
-                            source venv/bin/activate
+                            . venv/bin/activate
                             pip install --upgrade pip
                             pip install -r requirements.txt
                             playwright install chromium

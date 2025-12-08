@@ -1,126 +1,60 @@
 pipeline {
 
-    agent { label 'linux_02' }
-
-    environment {
-        WORKSPACE_DIR = "${env.WORKSPACE}"
-        RESULT_DIR    = "${env.WORKSPACE}/Result"
-        VENV_PATH     = "${env.WORKSPACE}/venv"
-        PYTHON        = "${env.WORKSPACE}/venv/bin/python"
-        PIP           = "${env.WORKSPACE}/venv/bin/pip"
-        PLAYWRIGHT    = "${env.WORKSPACE}/venv/bin/playwright"
-
-        JENKINS_URL   = "http://3.36.219.242:8080"
-    }
+    agent none   // 병렬 실행 위해 전체 agent 없음
 
     stages {
 
-        stage('Setup Python Environment') {
-            steps {
-                script {
-                    dir(env.WORKSPACE_DIR) {
-                        sh '''
+        stage('Run Tests on Linux & Windows') {
+            parallel {
+
+                /* -------------------------------------------------------------
+                   Linux Tests
+                ------------------------------------------------------------- */
+                stage('Linux Tests') {
+                    agent { label 'linux_02' }
+
+                    environment {
+                        VENV_PATH = "${env.WORKSPACE}/venv"
+                        PYTHON    = "${env.WORKSPACE}/venv/bin/python"
+                    }
+
+                    steps {
+                        sh """
                             python3 -m venv venv
                             venv/bin/pip install --upgrade pip
                             venv/bin/pip install -r requirements.txt
-                            venv/bin/playwright install chromium
-                        '''
+                        """
+
+                        sh """
+                            ${PYTHON} -m pytest --disable-warnings --maxfail=1
+                        """
                     }
                 }
-            }
-        }
 
+                /* -------------------------------------------------------------
+                   Windows Tests
+                ------------------------------------------------------------- */
+                stage('Windows Tests') {
+                    agent { label 'windows_01' }
 
-        stage('Run Tests') {
-            steps {
-                script {
-                    dir(env.WORKSPACE_DIR) {
+                    steps {
+                        bat """
+                            python -m venv venv
+                            venv\\Scripts\\pip install --upgrade pip
+                            venv\\Scripts\\pip install -r requirements.txt
+                        """
 
-                        withCredentials([
-                            file(credentialsId: 'todolist_dev_env_test', variable: 'ENV_FILE'),
-
-                            string(credentialsId: 'JWT_TOKEN',  variable: 'JWT_TOKEN'),
-                            string(credentialsId: 'JWT_REFRESH_TOKEN', variable: 'JWT_REFRESH_TOKEN'),
-                            string(credentialsId: 'KAKAO_ACCESS_TOKEN',  variable: 'KAKAO_ACCESS_TOKEN'),
-                            string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
-                            string(credentialsId: 'NAVER_ACCESS_TOKEN',  variable: 'NAVER_ACCESS_TOKEN'),
-                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
-                            usernamePassword(
-                                credentialsId: 'jenkins-admin',
-                                usernameVariable: 'JENKINS_USER',
-                                passwordVariable: 'JENKINS_PASS'
-                            )
-                        ]) {
-
-                            sh '''
-                                set +x
-                                echo "📌 Loading ENV_FILE and Tokens..."
-
-                                # ⭐ ENV_FILE 미지정/누락 시 워크스페이스의 .env-dev-test로 대체
-                                if [ -z "$ENV_FILE" ]; then
-                                    if [ -f ".env-dev-test" ]; then
-                                        export ENV_FILE="$PWD/.env-dev-test"
-                                        echo "[WARN] ENV_FILE not provided; fallback to $ENV_FILE"
-                                    else
-                                        echo "[ERROR] ENV_FILE not provided and .env-dev-test missing"; exit 1
-                                    fi
-                                elif [ ! -f "$ENV_FILE" ]; then
-                                    if [ -f ".env-dev-test" ]; then
-                                    export ENV_FILE="$PWD/.env-dev-test"
-                                        echo "[WARN] ENV_FILE path missing; fallback to $ENV_FILE"
-                                    else
-                                        echo "[ERROR] ENV_FILE path missing and .env-dev-test missing"; exit 1
-                                    fi
-                                fi
-
-                                # JWT tokens
-                                export JWT_TOKEN="${JWT_TOKEN}"
-                                export JWT_REFRESH_TOKEN="${JWT_REFRESH_TOKEN}"
-                                # 기존 WEB_TEST_JWT_TOKEN은 사용하지 않음
-
-                                # OAuth tokens
-                                export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
-                                export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
-                                export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
-                                export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
-
-                                # Jenkins admin creds (토큰 갱신 시 credential 업데이트용)
-                                export JENKINS_USER="${JENKINS_USER}"
-                                export JENKINS_PASS="${JENKINS_PASS}"
-                                export JENKINS_URL="${JENKINS_URL}"
-
-                                ###########################################
-                                # 🔥 BACKEND_BASE_URL 정규화 (개행 제거)
-                                ###########################################
-                                export BACKEND_BASE_URL="$(
-                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
-                                    | sed 's/^"//;s/"$//' \
-                                    | tr -d '\\r' \
-                                    | tr -d '\\n' \
-                                    | tr -d ' '
-                                )"
-                                echo "[DEBUG] TEST BACKEND_BASE_URL=$BACKEND_BASE_URL"
-
-                                set -x
-
-                                ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
-                            '''
-                        }
+                        bat """
+                            venv\\Scripts\\python -m pytest --disable-warnings --maxfail=1
+                        """
                     }
                 }
-            }
-        }
-
-        stage('Archive Test Report') {
-            steps {
-                archiveArtifacts artifacts: 'Result/**/*.html', fingerprint: true
             }
         }
     }
 
     post {
-        always {
-            echo "🎉 전체 파이프라인 완료!"
-        }
+        success { echo "✔ ALL TESTS PASSED (Linux + Windows)" }
+        failure { echo "❌ SOME TESTS FAILED" }
     }
 }

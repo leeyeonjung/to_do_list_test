@@ -355,5 +355,3 @@ if __name__ == "__main__":
             backend_base_url=args.backend_base_url,
             env_path=env_path
         )
-
-    print("TOKEN:", token)

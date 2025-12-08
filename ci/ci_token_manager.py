@@ -44,14 +44,14 @@ def update_jenkins_credential(credential_id: str, new_value: str):
 
     # --- 3) Credential XML ---
     xml_data = f"""
-<credentials>
-  <com.cloudbees.plugins.credentials.impl.StringCredentialsImpl>
+<com.cloudbees.plugins.credentials.common.StandardCredentials>
+  <org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
     <scope>GLOBAL</scope>
     <id>{credential_id}</id>
     <description>Updated by CI</description>
     <secret>{new_value}</secret>
-  </com.cloudbees.plugins.credentials.impl.StringCredentialsImpl>
-</credentials>
+  </org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
+</com.cloudbees.plugins.credentials.common.StandardCredentials>
 """.strip()
 
     headers = {

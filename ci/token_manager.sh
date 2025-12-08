@@ -301,6 +301,10 @@ except Exception as e:
         exit 1
     fi
     
+    echo "[DEBUG] Current credential XML structure (first 500 chars):"
+    echo "$CREDENTIAL_XML" | head -c 500
+    echo ""
+    
     UPDATED_XML=$(echo "$CREDENTIAL_XML" | NAVER_ACCESS="$NAVER_ACCESS" $PYTHON_CMD -c "
 import sys
 import xml.etree.ElementTree as ET
@@ -308,13 +312,26 @@ import os
 try:
     xml_str = sys.stdin.read()
     root = ET.fromstring(xml_str)
-    secret_elem = root.find('secret')
+    
+    # secret 요소 찾기 (다양한 네임스페이스 고려)
+    secret_elem = root.find('.//secret')
     if secret_elem is None:
+        # 네임스페이스 제거하고 찾기
+        for elem in root.iter():
+            if elem.tag.endswith('secret') or elem.tag == 'secret':
+                secret_elem = elem
+                break
+    
+    if secret_elem is None:
+        # secret 요소가 없으면 생성
         secret_elem = ET.SubElement(root, 'secret')
+    
     secret_elem.text = os.environ['NAVER_ACCESS']
     print(ET.tostring(root, encoding='unicode'))
 except Exception as e:
+    import traceback
     print(f'Error: {e}', file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     sys.exit(1)
 " 2>/tmp/py_error.txt)
     PYTHON_EXIT=$?
@@ -358,6 +375,7 @@ except Exception as e:
     
     # 업데이트 확인: 업데이트된 credential 값을 다시 가져와서 확인
     echo "[DEBUG] Verifying NAVER_ACCESS_TOKEN credential update..."
+    sleep 1  # Jenkins가 credential을 저장할 시간을 줌
     VERIFY_XML=$(curl -s -X GET \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
@@ -367,12 +385,23 @@ import sys
 import xml.etree.ElementTree as ET
 xml_str = sys.stdin.read()
 root = ET.fromstring(xml_str)
-secret_elem = root.find('secret')
+
+# secret 요소 찾기 (다양한 방식 시도)
+secret_elem = root.find('.//secret')
+if secret_elem is None:
+    for elem in root.iter():
+        if elem.tag.endswith('secret') or elem.tag == 'secret':
+            secret_elem = elem
+            break
+
 if secret_elem is not None and secret_elem.text:
     print(secret_elem.text[:20] + '...')
 else:
     print('NOT_FOUND')
-" 2>/dev/null)
+    # 디버깅: XML 구조 출력
+    print('XML structure:', file=sys.stderr)
+    print(ET.tostring(root, encoding='unicode')[:500], file=sys.stderr)
+" 2>/tmp/verify_error.txt)
     
     if [ "$VERIFY_TOKEN" = "${NAVER_ACCESS:0:20}..." ]; then
         echo "✅ Verified: NAVER_ACCESS_TOKEN credential is correctly updated"
@@ -380,6 +409,13 @@ else:
         echo "⚠️  WARNING: NAVER_ACCESS_TOKEN credential may not be updated correctly"
         echo "   Expected: ${NAVER_ACCESS:0:20}..."
         echo "   Got: $VERIFY_TOKEN"
+        if [ -f /tmp/verify_error.txt ] && [ -s /tmp/verify_error.txt ]; then
+            echo "[DEBUG] Verification error details:"
+            cat /tmp/verify_error.txt
+        fi
+        echo "[DEBUG] Verify XML structure (first 500 chars):"
+        echo "$VERIFY_XML" | head -c 500
+        echo ""
     fi
     
     echo "📤 Updating NAVER_REFRESH_TOKEN credential..."
@@ -400,13 +436,26 @@ import os
 try:
     xml_str = sys.stdin.read()
     root = ET.fromstring(xml_str)
-    secret_elem = root.find('secret')
+    
+    # secret 요소 찾기 (다양한 네임스페이스 고려)
+    secret_elem = root.find('.//secret')
     if secret_elem is None:
+        # 네임스페이스 제거하고 찾기
+        for elem in root.iter():
+            if elem.tag.endswith('secret') or elem.tag == 'secret':
+                secret_elem = elem
+                break
+    
+    if secret_elem is None:
+        # secret 요소가 없으면 생성
         secret_elem = ET.SubElement(root, 'secret')
+    
     secret_elem.text = os.environ['NAVER_REFRESH']
     print(ET.tostring(root, encoding='unicode'))
 except Exception as e:
+    import traceback
     print(f'Error: {e}', file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     sys.exit(1)
 " 2>/tmp/py_error.txt)
     PYTHON_EXIT=$?
@@ -450,6 +499,7 @@ except Exception as e:
     
     # 업데이트 확인: 업데이트된 credential 값을 다시 가져와서 확인
     echo "[DEBUG] Verifying NAVER_REFRESH_TOKEN credential update..."
+    sleep 1  # Jenkins가 credential을 저장할 시간을 줌
     VERIFY_XML=$(curl -s -X GET \
         -u "$JENKINS_USER:$JENKINS_PASS" \
         "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
@@ -459,12 +509,23 @@ import sys
 import xml.etree.ElementTree as ET
 xml_str = sys.stdin.read()
 root = ET.fromstring(xml_str)
-secret_elem = root.find('secret')
+
+# secret 요소 찾기 (다양한 방식 시도)
+secret_elem = root.find('.//secret')
+if secret_elem is None:
+    for elem in root.iter():
+        if elem.tag.endswith('secret') or elem.tag == 'secret':
+            secret_elem = elem
+            break
+
 if secret_elem is not None and secret_elem.text:
     print(secret_elem.text[:20] + '...')
 else:
     print('NOT_FOUND')
-" 2>/dev/null)
+    # 디버깅: XML 구조 출력
+    print('XML structure:', file=sys.stderr)
+    print(ET.tostring(root, encoding='unicode')[:500], file=sys.stderr)
+" 2>/tmp/verify_error.txt)
     
     if [ "$VERIFY_TOKEN" = "${NAVER_REFRESH:0:20}..." ]; then
         echo "✅ Verified: NAVER_REFRESH_TOKEN credential is correctly updated"
@@ -472,6 +533,13 @@ else:
         echo "⚠️  WARNING: NAVER_REFRESH_TOKEN credential may not be updated correctly"
         echo "   Expected: ${NAVER_REFRESH:0:20}..."
         echo "   Got: $VERIFY_TOKEN"
+        if [ -f /tmp/verify_error.txt ] && [ -s /tmp/verify_error.txt ]; then
+            echo "[DEBUG] Verification error details:"
+            cat /tmp/verify_error.txt
+        fi
+        echo "[DEBUG] Verify XML structure (first 500 chars):"
+        echo "$VERIFY_XML" | head -c 500
+        echo ""
     fi
     
     echo "✅ Naver tokens refreshed and updated"

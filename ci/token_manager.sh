@@ -86,9 +86,19 @@ import xml.etree.ElementTree as ET
 import os
 xml_str = sys.stdin.read()
 root = ET.fromstring(xml_str)
-secret_elem = root.find('secret')
+secret_elem = root.find('.//secret')
+if secret_elem is None:
+    for elem in root.iter():
+        if elem.tag.endswith('secret') or elem.tag == 'secret':
+            secret_elem = elem
+            break
 if secret_elem is None:
     secret_elem = ET.SubElement(root, 'secret')
+else:
+    # secret-redacted 요소가 있으면 제거
+    for child in list(secret_elem):
+        if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+            secret_elem.remove(child)
 secret_elem.text = os.environ['KAKAO_ACCESS']
 print(ET.tostring(root, encoding='unicode'))
 ")
@@ -116,9 +126,19 @@ import xml.etree.ElementTree as ET
 import os
 xml_str = sys.stdin.read()
 root = ET.fromstring(xml_str)
-secret_elem = root.find('secret')
+secret_elem = root.find('.//secret')
+if secret_elem is None:
+    for elem in root.iter():
+        if elem.tag.endswith('secret') or elem.tag == 'secret':
+            secret_elem = elem
+            break
 if secret_elem is None:
     secret_elem = ET.SubElement(root, 'secret')
+else:
+    # secret-redacted 요소가 있으면 제거
+    for child in list(secret_elem):
+        if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+            secret_elem.remove(child)
 secret_elem.text = os.environ['KAKAO_REFRESH']
 print(ET.tostring(root, encoding='unicode'))
 ")
@@ -325,7 +345,13 @@ try:
     if secret_elem is None:
         # secret 요소가 없으면 생성
         secret_elem = ET.SubElement(root, 'secret')
+    else:
+        # secret-redacted 요소가 있으면 제거
+        for child in list(secret_elem):
+            if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+                secret_elem.remove(child)
     
+    # secret 요소의 텍스트를 실제 토큰 값으로 설정
     secret_elem.text = os.environ['NAVER_ACCESS']
     print(ET.tostring(root, encoding='unicode'))
 except Exception as e:
@@ -349,6 +375,9 @@ except Exception as e:
     fi
     
     echo "$UPDATED_XML" > /tmp/naver_access_token.xml
+    echo "[DEBUG] Updated XML preview (first 300 chars):"
+    head -c 300 /tmp/naver_access_token.xml
+    echo ""
     echo "[DEBUG] Sending XML to update NAVER_ACCESS_TOKEN credential..."
     echo "[DEBUG] XML size: $(wc -c < /tmp/naver_access_token.xml) bytes"
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
@@ -449,7 +478,13 @@ try:
     if secret_elem is None:
         # secret 요소가 없으면 생성
         secret_elem = ET.SubElement(root, 'secret')
+    else:
+        # secret-redacted 요소가 있으면 제거
+        for child in list(secret_elem):
+            if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+                secret_elem.remove(child)
     
+    # secret 요소의 텍스트를 실제 토큰 값으로 설정
     secret_elem.text = os.environ['NAVER_REFRESH']
     print(ET.tostring(root, encoding='unicode'))
 except Exception as e:
@@ -473,6 +508,9 @@ except Exception as e:
     fi
     
     echo "$UPDATED_XML" > /tmp/naver_refresh_token.xml
+    echo "[DEBUG] Updated XML preview (first 300 chars):"
+    head -c 300 /tmp/naver_refresh_token.xml
+    echo ""
     echo "[DEBUG] Sending XML to update NAVER_REFRESH_TOKEN credential..."
     echo "[DEBUG] XML size: $(wc -c < /tmp/naver_refresh_token.xml) bytes"
     HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
@@ -593,9 +631,19 @@ import xml.etree.ElementTree as ET
 import os
 xml_str = sys.stdin.read()
 root = ET.fromstring(xml_str)
-secret_elem = root.find('secret')
+secret_elem = root.find('.//secret')
+if secret_elem is None:
+    for elem in root.iter():
+        if elem.tag.endswith('secret') or elem.tag == 'secret':
+            secret_elem = elem
+            break
 if secret_elem is None:
     secret_elem = ET.SubElement(root, 'secret')
+else:
+    # secret-redacted 요소가 있으면 제거
+    for child in list(secret_elem):
+        if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+            secret_elem.remove(child)
 secret_elem.text = os.environ['JWT_ACCESS']
 print(ET.tostring(root, encoding='unicode'))
 ")
@@ -623,9 +671,19 @@ import xml.etree.ElementTree as ET
 import os
 xml_str = sys.stdin.read()
 root = ET.fromstring(xml_str)
-secret_elem = root.find('secret')
+secret_elem = root.find('.//secret')
+if secret_elem is None:
+    for elem in root.iter():
+        if elem.tag.endswith('secret') or elem.tag == 'secret':
+            secret_elem = elem
+            break
 if secret_elem is None:
     secret_elem = ET.SubElement(root, 'secret')
+else:
+    # secret-redacted 요소가 있으면 제거
+    for child in list(secret_elem):
+        if 'secret-redacted' in child.tag or 'redacted' in child.tag:
+            secret_elem.remove(child)
 secret_elem.text = os.environ['JWT_REFRESH']
 print(ET.tostring(root, encoding='unicode'))
 ")

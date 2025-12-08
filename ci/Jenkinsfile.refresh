@@ -9,13 +9,14 @@ pipeline {
         PIP           = "${env.WORKSPACE}/venv/bin/pip"
 
         JENKINS_URL = "http://3.36.219.242:8080"
-        CREDENTIAL_DOMAIN = "dev"
     }
 
     stages {
 
         stage('Checkout') {
-            steps { checkout scm }
+            steps { 
+                checkout scm 
+            }
         }
 
         stage('Setup Python Environment') {
@@ -23,8 +24,13 @@ pipeline {
                 script {
                     dir(env.WORKSPACE_DIR) {
                         sh '''
+                            # 가상환경 생성
                             python3 -m venv venv
+
+                            # pip 업그레이드
                             venv/bin/pip install --upgrade pip
+
+                            # 의존성 설치
                             venv/bin/pip install -r requirements.txt
                         '''
                     }

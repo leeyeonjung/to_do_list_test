@@ -152,6 +152,8 @@ if [[ "$NAVER_RESULT" == "True" ]]; then
     echo "🟢 Naver Token is VALID"
 else
     echo "🔴 Naver Token is INVALID - Refreshing..."
+    
+    # Python 스크립트 실행 및 에러 캡처
     BACKEND_BASE_URL="$BACKEND_BASE_URL" NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN" $PYTHON_CMD -c "
 import sys
 import json
@@ -177,29 +179,33 @@ try:
     if not token or not refresh_token:
         print('Error: Missing tokens in response', file=sys.stderr)
         print(f'token exists: {bool(token)}, refresh_token exists: {bool(refresh_token)}', file=sys.stderr)
+        print(f'Response keys: {list(result.keys())}', file=sys.stderr)
         sys.exit(1)
     
     # token.json에 저장
     with open('token.json', 'w') as f:
         json.dump(result, f)
     
+    print('Success: token.json created', file=sys.stderr)
     sys.exit(0)
 except Exception as e:
     import traceback
     print(f'Error: {e}', file=sys.stderr)
     traceback.print_exc(file=sys.stderr)
     sys.exit(1)
-" 2>/tmp/naver_refresh_error.txt
+" >/tmp/naver_refresh_output.txt 2>/tmp/naver_refresh_error.txt
     PYTHON_EXIT=$?
     
+    echo "[DEBUG] Python exit code: $PYTHON_EXIT"
+    
     if [ $PYTHON_EXIT -ne 0 ]; then
-        echo "❌ Failed to refresh Naver token"
-        if [ -f "/tmp/naver_refresh_error.txt" ]; then
-            echo "Debug: Python error:"
-            cat /tmp/naver_refresh_error.txt
-        fi
+        echo "❌ Failed to refresh Naver token (exit code: $PYTHON_EXIT)"
+        echo "[DEBUG] Python stdout:"
+        cat /tmp/naver_refresh_output.txt 2>/dev/null || echo "(empty)"
+        echo "[DEBUG] Python stderr:"
+        cat /tmp/naver_refresh_error.txt 2>/dev/null || echo "(empty)"
         if [ -f "token.json" ]; then
-            echo "Debug: token.json contents:"
+            echo "[DEBUG] token.json contents:"
             cat token.json
         fi
         exit 1
@@ -207,16 +213,27 @@ except Exception as e:
     
     if [ ! -f "token.json" ]; then
         echo "❌ token.json file not found after refresh"
+        echo "[DEBUG] Python stdout:"
+        cat /tmp/naver_refresh_output.txt 2>/dev/null || echo "(empty)"
+        echo "[DEBUG] Python stderr:"
+        cat /tmp/naver_refresh_error.txt 2>/dev/null || echo "(empty)"
         exit 1
     fi
     
     echo "📄 Refresh response saved to token.json"
+    echo "[DEBUG] Checking token.json content..."
+    cat token.json | head -c 200
+    echo ""
+    
     NAVER_ACCESS=$(jq -r '.token // .accessToken // .access_token' token.json 2>/dev/null)
     NAVER_REFRESH=$(jq -r '.refreshToken // .refresh_token' token.json 2>/dev/null)
     
+    echo "[DEBUG] NAVER_ACCESS extracted: ${NAVER_ACCESS:0:20}..."
+    echo "[DEBUG] NAVER_REFRESH extracted: ${NAVER_REFRESH:0:20}..."
+    
     if [ -z "$NAVER_ACCESS" ] || [ -z "$NAVER_REFRESH" ]; then
         echo "❌ Failed to extract tokens from refresh response"
-        echo "Debug: token.json contents:"
+        echo "[DEBUG] token.json full contents:"
         cat token.json
         exit 1
     fi

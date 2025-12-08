@@ -259,64 +259,6 @@ def ensure_valid_oauth_token(provider: str, backend_base_url=None, env_path=None
 
 
 # ============================================================
-# 5) 모든 토큰 검증 통합 함수
-# ============================================================
-
-def validate_and_refresh_all_tokens(backend_base_url=None, env_path=None):
-    if env_path is None:
-        env_path = get_env_path()
-    load_env_safe(env_path)
-
-    backend_base_url = backend_base_url or get_env_value(env_path, "BACKEND_BASE_URL")
-
-    result = {
-        "jwt_token": None,
-        "kakao_access_token": None,
-        "naver_access_token": None,
-        "jwt_refreshed": False,
-        "kakao_refreshed": False,
-        "naver_refreshed": False,
-    }
-
-    # JWT
-    jwt_refresh = get_env_value(env_path, "JWT_REFRESH_TOKEN")
-    jwt_token = get_env_value(env_path, "JWT_TOKEN")
-
-    if jwt_refresh:
-        resp = refresh_jwt_token(backend_base_url, jwt_refresh, jwt_token)
-        if resp:
-            result["jwt_token"] = resp.get("token")
-            result["jwt_refreshed"] = resp.get("refreshed", False)
-            update_jwt_env_file(env_path, resp.get("token"), resp.get("user", {}))
-
-    # Kakao
-    kakao_ref = get_env_value(env_path, "KAKAO_REFRESH_TOKEN")
-    if kakao_ref:
-        resp = refresh_oauth_token(backend_base_url, kakao_ref, "kakao",
-                                   "/api/auth/kakao/refresh")
-        if resp:
-            result["kakao_access_token"] = resp.get("token")
-            result["kakao_refreshed"] = True
-            if resp.get("refreshToken"):
-                update_oauth_env_file(env_path, resp["refreshToken"], "kakao")
-            _upsert_env_value(env_path, "KAKAO_ACCESS_TOKEN", resp.get("token"))
-
-    # Naver
-    naver_ref = get_env_value(env_path, "NAVER_REFRESH_TOKEN")
-    if naver_ref:
-        resp = refresh_oauth_token(backend_base_url, naver_ref, "naver",
-                                   "/api/auth/naver/refresh")
-        if resp:
-            result["naver_access_token"] = resp.get("token")
-            result["naver_refreshed"] = True
-            if resp.get("refreshToken"):
-                update_oauth_env_file(env_path, resp["refreshToken"], "naver")
-            _upsert_env_value(env_path, "NAVER_ACCESS_TOKEN", resp.get("token"))
-
-    return result
-
-
-# ============================================================
 # CLI 실행 (테스트 용)
 # ============================================================
 

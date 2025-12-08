@@ -16,7 +16,6 @@ from src.utils.token_validator import (
     ensure_valid_jwt_token,
     ensure_valid_oauth_token,
     validate_jwt_token,
-    validate_and_refresh_all_tokens,
 )
 
 log = logging.getLogger(__name__)

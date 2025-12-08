@@ -1,0 +1,88 @@
+pipeline {
+
+    agent { label 'linux_02' }
+
+    environment {
+        WORKSPACE_DIR = "${env.WORKSPACE}"
+        VENV_PATH     = "${env.WORKSPACE}/venv"
+        PYTHON        = "${env.WORKSPACE}/venv/bin/python"
+        PIP           = "${env.WORKSPACE}/venv/bin/pip"
+
+        JENKINS_URL = "http://3.36.219.242:8080"
+        CREDENTIAL_DOMAIN = "dev"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Setup Python Environment') {
+            steps {
+                script {
+                    dir(env.WORKSPACE_DIR) {
+                        sh '''
+                            python3 -m venv venv
+                            venv/bin/pip install --upgrade pip
+                            venv/bin/pip install -r requirements.txt
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Refresh Tokens via Token Manager') {
+            steps {
+                script {
+                    dir(env.WORKSPACE_DIR) {
+
+                        withCredentials([
+                            string(credentialsId: 'JWT_TOKEN', variable: 'JWT_TOKEN'),
+                            string(credentialsId: 'JWT_REFRESH_TOKEN', variable: 'JWT_REFRESH_TOKEN'),
+
+                            string(credentialsId: 'KAKAO_ACCESS_TOKEN', variable: 'KAKAO_ACCESS_TOKEN'),
+                            string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
+
+                            string(credentialsId: 'NAVER_ACCESS_TOKEN', variable: 'NAVER_ACCESS_TOKEN'),
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
+
+                            usernamePassword(
+                                credentialsId: 'jenkins-admin',
+                                usernameVariable: 'JENKINS_USER',
+                                passwordVariable: 'JENKINS_PASS'
+                            )
+                        ]) {
+
+                            sh '''
+                                set +x
+                                echo "🔄 Running CI Token Manager..."
+
+                                export JWT_TOKEN
+                                export JWT_REFRESH_TOKEN
+                                export KAKAO_ACCESS_TOKEN
+                                export KAKAO_REFRESH_TOKEN
+                                export NAVER_ACCESS_TOKEN
+                                export NAVER_REFRESH_TOKEN
+                                export JENKINS_USER
+                                export JENKINS_PASS
+
+                                ${PYTHON} ci/ci_token_manager.py
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 Token refresh completed. Triggering test job..."
+            build job: 'todolist_test', wait: false
+        }
+        failure {
+            echo "❌ Token refresh job failed. Tests will NOT run."
+        }
+    }
+}

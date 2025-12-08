@@ -3,7 +3,7 @@ import requests
 import logging
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+log=logging.getLogger()
 
 
 # ============================================================

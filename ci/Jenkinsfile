@@ -55,19 +55,37 @@ pipeline {
                                 set +x
                                 export PYTHONPATH="${WORKSPACE}:${PYTHONPATH}"
 
+                                # 🔐 Export tokens from Jenkins credentials
                                 export KAKAO_ACCESS_TOKEN="${KAKAO_ACCESS_TOKEN}"
                                 export KAKAO_REFRESH_TOKEN="${KAKAO_REFRESH_TOKEN}"
                                 export NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
                                 export NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
                                 export WEB_TEST_JWT_TOKEN="${WEB_TEST_JWT_TOKEN}"
 
+                                # Jenkins admin creds
                                 export JENKINS_USER="${JENKINS_USER}"
                                 export JENKINS_PASS="${JENKINS_PASS}"
                                 export JENKINS_URL="${JENKINS_URL}"
 
+                                # ENV file from Jenkins
                                 export ENV_FILE="${ENV_FILE}"
 
+                                ###############################################
+                                # 🔥 FIX: Normalize BACKEND_BASE_URL (newline 제거)
+                                ###############################################
+                                export BACKEND_BASE_URL="$(
+                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
+                                    | sed 's/^"//;s/"$//' \
+                                    | tr -d '\\r' \
+                                    | tr -d '\\n' \
+                                    | tr -d ' '
+                                )"
+
+                                echo "[DEBUG] Normalized BACKEND_BASE_URL: $BACKEND_BASE_URL"
+
                                 set -x
+
+                                # Run validation + refresh script
                                 bash ci/check_token_valid.sh
                             '''
                         }
@@ -75,6 +93,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('Run Tests') {
             steps {

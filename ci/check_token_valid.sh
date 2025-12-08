@@ -35,7 +35,11 @@ NAVER_ACCESS_TOKEN="${NAVER_ACCESS_TOKEN}"
 NAVER_REFRESH_TOKEN="${NAVER_REFRESH_TOKEN}"
 
 # BACKEND URL만 ENV에서 읽음
-BACKEND_BASE_URL="$(grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- | tr -d '"')"
+BACKEND_BASE_URL="$(grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2- \
+    | sed 's/^"//;s/"$//' \
+    | tr -d '\r' \
+    | tr -d '\n' \
+    | tr -d ' ')"
 
 echo "BACKEND_BASE_URL = $BACKEND_BASE_URL"
 

@@ -158,21 +158,52 @@ import json
 import os
 sys.path.insert(0, '.')
 from src.utils.token_validator import refresh_oauth_token
-result = refresh_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['NAVER_REFRESH_TOKEN'], '/api/auth/naver/refresh')
-if result:
+
+try:
+    result = refresh_oauth_token(
+        os.environ['BACKEND_BASE_URL'],
+        os.environ['NAVER_REFRESH_TOKEN'],
+        '/api/auth/naver/refresh'
+    )
+    
+    if not result:
+        print('Error: refresh_oauth_token returned None', file=sys.stderr)
+        sys.exit(1)
+    
+    # 토큰 키 확인 (다양한 형식 지원)
+    token = result.get('token') or result.get('accessToken') or result.get('access_token')
+    refresh_token = result.get('refreshToken') or result.get('refresh_token')
+    
+    if not token or not refresh_token:
+        print('Error: Missing tokens in response', file=sys.stderr)
+        print(f'token exists: {bool(token)}, refresh_token exists: {bool(refresh_token)}', file=sys.stderr)
+        sys.exit(1)
+    
+    # token.json에 저장
     with open('token.json', 'w') as f:
         json.dump(result, f)
+    
     sys.exit(0)
-else:
+except Exception as e:
+    import traceback
+    print(f'Error: {e}', file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     sys.exit(1)
-" || {
+" 2>/tmp/naver_refresh_error.txt
+    PYTHON_EXIT=$?
+    
+    if [ $PYTHON_EXIT -ne 0 ]; then
         echo "❌ Failed to refresh Naver token"
+        if [ -f "/tmp/naver_refresh_error.txt" ]; then
+            echo "Debug: Python error:"
+            cat /tmp/naver_refresh_error.txt
+        fi
         if [ -f "token.json" ]; then
             echo "Debug: token.json contents:"
             cat token.json
         fi
         exit 1
-    }
+    fi
     
     if [ ! -f "token.json" ]; then
         echo "❌ token.json file not found after refresh"

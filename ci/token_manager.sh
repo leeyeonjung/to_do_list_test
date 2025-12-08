@@ -153,6 +153,8 @@ if [[ "$NAVER_RESULT" == "True" ]]; then
 else
     echo "🔴 Naver Token is INVALID - Refreshing..."
     
+    # set -e의 영향을 받지 않도록 실행
+    set +e
     # Python 스크립트 실행 및 에러 캡처
     BACKEND_BASE_URL="$BACKEND_BASE_URL" NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN" $PYTHON_CMD -c "
 import sys
@@ -195,6 +197,7 @@ except Exception as e:
     sys.exit(1)
 " >/tmp/naver_refresh_output.txt 2>/tmp/naver_refresh_error.txt
     PYTHON_EXIT=$?
+    set -e  # 다시 set -e 활성화
     
     echo "[DEBUG] Python exit code: $PYTHON_EXIT"
     

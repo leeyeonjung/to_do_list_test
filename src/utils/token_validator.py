@@ -107,9 +107,9 @@ def validate_oauth_token(backend_base_url, access_token, endpoint):
     resp = requests.post(url, json=payload)
 
     if resp.status_code == 200:
-        return True, resp.json()
+        return True
     else:
-        return False, None
+        return False
 
 
 def refresh_oauth_token(backend_base_url, refresh_token, endpoint):
@@ -120,18 +120,13 @@ def refresh_oauth_token(backend_base_url, refresh_token, endpoint):
     return resp.json() if resp.status_code == 200 else None
 
 
-def update_oauth_env_file(env_path: Path, refresh_token: str, provider: str):
-    key = f"{provider.upper()}_REFRESH_TOKEN"
-    upsert_env_value(env_path, key, refresh_token)
-
-
 def ensure_valid_oauth_token(
     provider: str,
     backend_base_url=None,
     env_path=None,
     validate_endpoint=None,
     refresh_endpoint=None,
-    read_only=False   # ⭐ 추가됨
+    read_only=False
 ):
     provider_upper = provider.upper()
 
@@ -160,14 +155,4 @@ def ensure_valid_oauth_token(
         backend_base_url, refresh_token, refresh_endpoint
     )
 
-    new_token = refresh_resp.get("token") if refresh_resp else None
-    new_refresh_token = refresh_resp.get("refreshToken") if refresh_resp else None
-
-    if not read_only:
-        if new_refresh_token:
-            update_oauth_env_file(env_path, new_refresh_token, provider)
-
-        if new_token:
-            upsert_env_value(env_path, f"{provider_upper}_ACCESS_TOKEN", new_token)
-
-    return new_token
+    return refresh_resp.get("token") if refresh_resp else None

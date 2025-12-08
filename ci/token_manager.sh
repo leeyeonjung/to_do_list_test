@@ -137,3 +137,204 @@ print(ET.tostring(root, encoding='unicode'))
     
     echo "✅ Kakao tokens refreshed and updated"
 fi
+
+# --- 3. Naver Token 검증 및 갱신 -------------------------
+NAVER_RESULT=$(BACKEND_BASE_URL="$BACKEND_BASE_URL" NAVER_ACCESS_TOKEN="$NAVER_ACCESS_TOKEN" $PYTHON_CMD -c "
+import sys
+import os
+sys.path.insert(0, '.')
+from src.utils.token_validator import validate_oauth_token
+result = validate_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['NAVER_ACCESS_TOKEN'], '/api/auth/naver')
+print('True' if result else 'False')
+")
+echo "🔍 NAVER_RESULT = $NAVER_RESULT"
+if [[ "$NAVER_RESULT" == "True" ]]; then
+    echo "🟢 Naver Token is VALID"
+else
+    echo "🔴 Naver Token is INVALID - Refreshing..."
+    BACKEND_BASE_URL="$BACKEND_BASE_URL" NAVER_REFRESH_TOKEN="$NAVER_REFRESH_TOKEN" $PYTHON_CMD -c "
+import sys
+import json
+import os
+sys.path.insert(0, '.')
+from src.utils.token_validator import refresh_oauth_token
+result = refresh_oauth_token(os.environ['BACKEND_BASE_URL'], os.environ['NAVER_REFRESH_TOKEN'], '/api/auth/naver/refresh')
+if result:
+    with open('token.json', 'w') as f:
+        json.dump(result, f)
+    sys.exit(0)
+else:
+    sys.exit(1)
+" || exit 1
+    NAVER_ACCESS=$(jq -r '.token // .accessToken // .access_token' token.json)
+    NAVER_REFRESH=$(jq -r '.refreshToken // .refresh_token' token.json)
+    
+    if [ -z "$NAVER_ACCESS" ] || [ -z "$NAVER_REFRESH" ]; then
+        echo "❌ Failed to extract tokens from refresh response"
+        exit 1
+    fi
+    
+    echo "📤 Updating NAVER_ACCESS_TOKEN credential..."
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
+    
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | NAVER_ACCESS="$NAVER_ACCESS" $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+import os
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = os.environ['NAVER_ACCESS']
+print(ET.tostring(root, encoding='unicode'))
+")
+    
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_ACCESS_TOKEN/config.xml")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
+        echo "❌ Failed to update NAVER_ACCESS_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "📤 Updating NAVER_REFRESH_TOKEN credential..."
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
+    
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | NAVER_REFRESH="$NAVER_REFRESH" $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+import os
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = os.environ['NAVER_REFRESH']
+print(ET.tostring(root, encoding='unicode'))
+")
+    
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/NAVER_REFRESH_TOKEN/config.xml")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
+        echo "❌ Failed to update NAVER_REFRESH_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "✅ Naver tokens refreshed and updated"
+fi
+
+# --- 4. JWT Token 검증 및 갱신 -------------------------
+JWT_RESULT=$(BACKEND_BASE_URL="$BACKEND_BASE_URL" JWT_TOKEN="$JWT_TOKEN" $PYTHON_CMD -c "
+import sys
+import os
+sys.path.insert(0, '.')
+from src.utils.token_validator import validate_jwt_token
+result, _ = validate_jwt_token(os.environ['BACKEND_BASE_URL'], os.environ['JWT_TOKEN'], '/api/auth/me')
+print('True' if result else 'False')
+")
+echo "🔍 JWT_RESULT = $JWT_RESULT"
+if [[ "$JWT_RESULT" == "True" ]]; then
+    echo "🟢 JWT Token is VALID"
+else
+    echo "🔴 JWT Token is INVALID - Refreshing..."
+    BACKEND_BASE_URL="$BACKEND_BASE_URL" JWT_REFRESH_TOKEN="$JWT_REFRESH_TOKEN" $PYTHON_CMD -c "
+import sys
+import json
+import os
+sys.path.insert(0, '.')
+from src.utils.token_validator import refresh_jwt_token
+result = refresh_jwt_token(os.environ['BACKEND_BASE_URL'], os.environ['JWT_REFRESH_TOKEN'], None, '/api/auth/refresh')
+if result:
+    with open('token.json', 'w') as f:
+        json.dump(result, f)
+    sys.exit(0)
+else:
+    sys.exit(1)
+" || exit 1
+    JWT_ACCESS=$(jq -r '.token // .accessToken // .access_token' token.json)
+    JWT_REFRESH=$(jq -r '.refreshToken // .refresh_token' token.json)
+    
+    if [ -z "$JWT_ACCESS" ] || [ -z "$JWT_REFRESH" ]; then
+        echo "❌ Failed to extract tokens from refresh response"
+        exit 1
+    fi
+    
+    echo "📤 Updating JWT_TOKEN credential..."
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_TOKEN/config.xml")
+    
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | JWT_ACCESS="$JWT_ACCESS" $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+import os
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = os.environ['JWT_ACCESS']
+print(ET.tostring(root, encoding='unicode'))
+")
+    
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_TOKEN/config.xml")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
+        echo "❌ Failed to update JWT_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "📤 Updating JWT_REFRESH_TOKEN credential..."
+    CREDENTIAL_XML=$(curl -s -X GET \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_REFRESH_TOKEN/config.xml")
+    
+    UPDATED_XML=$(echo "$CREDENTIAL_XML" | JWT_REFRESH="$JWT_REFRESH" $PYTHON_CMD -c "
+import sys
+import xml.etree.ElementTree as ET
+import os
+xml_str = sys.stdin.read()
+root = ET.fromstring(xml_str)
+secret_elem = root.find('secret')
+if secret_elem is None:
+    secret_elem = ET.SubElement(root, 'secret')
+secret_elem.text = os.environ['JWT_REFRESH']
+print(ET.tostring(root, encoding='unicode'))
+")
+    
+    HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/curl_response.txt -X POST \
+        -u "$JENKINS_USER:$JENKINS_PASS" \
+        -H "Content-Type: application/xml" \
+        -d "$UPDATED_XML" \
+        "$JENKINS_URL/credentials/store/system/domain/${CREDENTIAL_DOMAIN}/credential/JWT_REFRESH_TOKEN/config.xml")
+    
+    if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ] && [ "$HTTP_CODE" != "302" ]; then
+        echo "❌ Failed to update JWT_REFRESH_TOKEN (HTTP $HTTP_CODE)"
+        cat /tmp/curl_response.txt
+        exit 1
+    fi
+    
+    echo "✅ JWT tokens refreshed and updated"
+fi
+
+echo "🟢 Jenkins Credential Update Completed"
+exit 0

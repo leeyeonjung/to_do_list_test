@@ -84,7 +84,7 @@ pipeline {
                                 export JENKINS_PASS
                                 export CREDENTIAL_DOMAIN=todolist_dev
 
-                                ${PYTHON} ci/ci_token_manager.py
+                                bash ci/token_manager.sh
                             '''
                         }
 

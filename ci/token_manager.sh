@@ -84,18 +84,6 @@ else:
     echo "✅ Kakao tokens refreshed and updated"
 fi
 
-curl -X POST \
-    -u "$USER:$PASS" \
-    -H "Content-Type: application/json" \
-    -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"api_access_token\", \"secret\":\"$KAKAO_ACCESS\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-    "$JENKINS_URL/credentials/store/system/domain/todolist_dev/credential/api_access_token"
-
-curl -X POST \
-    -u "$USER:$PASS" \
-    -H "Content-Type: application/json" \
-    -d "{ \"credentials\":{\"scope\":\"GLOBAL\", \"id\":\"api_refresh_token\", \"secret\":\"$KAKAO_REFRESH\", \"\\$class\":\"org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl\"} }" \
-    "$JENKINS_URL/credentials/store/system/domain/todolist_dev/credential/api_refresh_token"
-
 
 
 NAVER_RESULT=$($PYTHON_CMD -c "

@@ -11,73 +11,47 @@ log=logging.getLogger()
 # ============================================================
 
 def update_jenkins_credential(credential_id: str, new_value: str):
-
     jenkins_url = os.getenv("JENKINS_URL")
     user = os.getenv("JENKINS_USER")
     password = os.getenv("JENKINS_PASS")
+    domain = os.getenv("CREDENTIAL_DOMAIN", "todolist_dev")
 
-    # 너희 Jenkins Credential Domain
-    domain = os.getenv("CREDENTIAL_DOMAIN", "dev")
-
-    if not all([jenkins_url, user, password]):
-        log.error("❌ Jenkins Credential 업데이트 실패: 인증 정보 부족")
-        return False
-
-    # --- 1) Crumb Token 요청 ---
-    crumb_url = f"{jenkins_url}/crumbIssuer/api/json"
-    crumb_resp = requests.get(crumb_url, auth=(user, password))
-
-    if crumb_resp.status_code != 200:
-        log.error(f"❌ Crumb Token 요청 실패 ({crumb_resp.status_code})")
-        log.error(crumb_resp.text[:200])
-        return False
-
-    crumb_data = crumb_resp.json()
-    crumb_field = crumb_data["crumbRequestField"]
-    crumb_value = crumb_data["crumb"]
-
-    # --- 2) Credential 업데이트 URL ---
-    api_url = (
-        f"{jenkins_url}/credentials/store/system/domain/"
-        f"{domain}/credential/{credential_id}/config.xml"
-    )
-
-    # --- 3) Credential XML ---
-    xml_data = f"""
-<com.cloudbees.plugins.credentials.common.StandardCredentials>
-  <org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
-    <scope>GLOBAL</scope>
-    <id>{credential_id}</id>
-    <description>Updated by CI</description>
-    <secret>{new_value}</secret>
-  </org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>
-</com.cloudbees.plugins.credentials.common.StandardCredentials>
-""".strip()
-
+    # 1) Crumb
+    crumb_resp = requests.get(f"{jenkins_url}/crumbIssuer/api/json", auth=(user, password))
+    crumb = crumb_resp.json()
     headers = {
-        "Content-Type": "application/xml",
-        crumb_field: crumb_value
+        crumb["crumbRequestField"]: crumb["crumb"],
+        "Content-Type": "application/xml"
     }
 
-    log.info(f"🔐 Updating Jenkins credential ({credential_id}) @ domain={domain}")
+    # 2) GET existing config.xml
+    url = f"{jenkins_url}/credentials/store/system/domain/{domain}/credential/{credential_id}/config.xml"
+    get_resp = requests.get(url, auth=(user, password))
 
-    # --- 4) PUT 요청 ---
-    resp = requests.put(
-        api_url,
-        auth=(user, password),
-        headers=headers,
-        data=xml_data.encode("utf-8")
+    if get_resp.status_code != 200:
+        print("❌ Cannot fetch existing credential XML:", get_resp.text)
+        return False
+
+    xml = get_resp.text
+
+    # 3) replace <secret>...</secret> value
+    import re
+    new_xml = re.sub(
+        r"<secret>.*?</secret>",
+        f"<secret>{new_value}</secret>",
+        xml,
+        flags=re.DOTALL
     )
 
-    if resp.status_code in (200, 201, 204):
-        log.info(f"✅ Credential 업데이트 성공: {credential_id}")
+    # 4) PUT updated XML back to Jenkins
+    put_resp = requests.put(url, auth=(user, password), data=new_xml.encode("utf-8"), headers=headers)
+
+    if put_resp.status_code in (200, 204):
+        print(f"✅ Credential {credential_id} updated successfully")
         return True
-
-    log.error(
-        f"❌ Credential 업데이트 실패 {resp.status_code} → "
-        f"{resp.text[:300]}"
-    )
-    return False
+    else:
+        print(f"❌ Update failed: {put_resp.status_code} → {put_resp.text}")
+        return False
 
 
 

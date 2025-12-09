@@ -96,7 +96,9 @@ if __name__ == "__main__":
 
     # ======================= kakao token =======================
     new_kakao_token = get_new_kakao_token()
+    print("new_kakao_token: ", new_kakao_token)
     new_kakao_token_valid = is_kakao_token_valid(new_kakao_token["access_token"])
+    print("new_kakao_token_valid: ", new_kakao_token_valid)
 
     if new_kakao_token_valid:
         new_kakao_access_token = new_kakao_token["access_token"]

@@ -49,9 +49,9 @@ def get_new_jwt_token():
     }
     res = requests.post(url, data=data)
 
-    if res.status_code == 200:
-        return res.json()
-
+    # if res.status_code == 200:
+    #     return res.json()
+    return res.status_code, res.json()
 
 #===========kakao token validation===============
 def is_kakao_token_valid(access_token):

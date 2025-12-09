@@ -6,35 +6,36 @@ POM(Page Object Model) 구조를 적용한 pytest 기반 테스트 자동화 프
 
 ```
 todolist_test/
-├── .env                    # 환경 변수 설정 파일 (로컬 개발용, gitignore에 포함)
-├── .env-dev-test           # CI/CD 기본 환경 변수 파일 (gitignore에 포함)
-├── .env.example            # 환경 변수 예제 파일
-├── .gitignore              # Git 무시 파일 목록
-├── conftest.py             # pytest 설정 및 fixture
+├── .gitignore
+├── .flake8
+├── conftest.py             # pytest 설정 및 fixture (헬스 체크/HTML 리포트 경로 설정)
 ├── pytest.ini              # pytest 설정
 ├── requirements.txt        # Python 패키지 의존성
-├── ci/                     # CI/CD 설정
-│   └── Jenkinsfile         # Jenkins 파이프라인 설정
-├── src/                    # 소스 코드
+├── ci/
+│   ├── Jenkinsfile.test    # 테스트 실행 파이프라인
+│   ├── Jenkinsfile.refresh # 토큰 갱신 파이프라인
+│   └── check_token_status.py
+├── src/
 │   ├── actions/            # 액션 클래스 (POM 패턴)
-│   │   ├── api/            # API 테스트용 클래스
+│   │   ├── api/
 │   │   │   └── base_api.py
-│   │   └── web/            # Web 테스트용 클래스
+│   │   └── web/
 │   │       ├── auth_actions.py
 │   │       ├── base_page.py
 │   │       └── todo_actions.py
-│   ├── locators/           # 페이지 로케이터
+│   ├── locators/
 │   │   └── web/
 │   │       ├── auth_locators.py
 │   │       └── todo_locators.py
-│   └── utils/              # 유틸리티 함수
+│   └── utils/
 │       ├── env_loader.py   # 환경 변수 로딩 유틸리티
-│       └── token_validator.py  # 토큰 검증 및 갱신 유틸리티
-├── tests/                  # 테스트 파일
+│       ├── health_check.py # 백/프론트 헬스 체크 유틸
+│       └── jwt.py          # Playwright JWT 주입/헤더 설정
+├── tests/
 │   ├── test_api.py         # API 테스트
-│   ├── test_login.py       # 로그인 테스트 (Kakao/Naver OAuth)
+│   ├── test_login.py       # Kakao/Naver OAuth 테스트
 │   └── test_web.py         # Web 테스트
-└── Result/                 # 테스트 리포트 저장 디렉토리
+└── Result/                 # pytest HTML 리포트 저장 디렉토리
 ```
 
 ## 설치 방법
@@ -57,25 +58,24 @@ playwright install chromium
 ```
 
 4. 환경 변수 설정:
-`.env` 파일을 생성하고 `.env.example`을 참고하여 설정합니다.
+`.env` 파일을 생성해 필요한 값을 채워 넣습니다. (현재 리포지토리에 `.env.example`이 포함 되어 있습습니다.)
 
 ## 환경 변수 설정
 
 ### 환경 변수 로딩 우선순위
 
-프로젝트는 다음 순서로 환경 변수를 로드합니다:
+프로젝트는 다음 순서로 환경 변수를 로드합니다 (`src/utils/env_loader.py`):
 
-1. **ENV_FILE 환경 변수** (Jenkins credential을 통해 주입) - 최우선
-2. **프로젝트 루트의 `.env` 파일** (로컬 환경)
-3. **프로젝트 루트의 `.env-dev-test` 파일** (CI 기본값, Jenkins에서 ENV_FILE이 없을 때 fallback)
+1. **ENV_FILE 환경 변수**(Jenkins credential 파일 경로) - 최우선
+2. **프로젝트 루트의 `.env` 파일**(존재할 경우 후순위로 병합)
 
 ### 필수 환경 변수
 
 #### Web Configuration
-- `WEB_BASE_URL`: Web 애플리케이션 기본 URL (예: http://localhost:3000)
+- `WEB_BASE_URL`: Web 애플리케이션 기본 URL
 
 #### Backend Configuration
-- `BACKEND_BASE_URL`: 백엔드 API 서버 기본 URL (예: http://localhost:5000)
+- `BACKEND_BASE_URL`: 백엔드 API 서버 기본 URL
 
 #### OAuth Configuration
 - `KAKAO_ACCESS_TOKEN`: Kakao OAuth 액세스 토큰
@@ -87,14 +87,10 @@ playwright install chromium
 - `NAVER_REFRESH_TOKEN`: Naver OAuth 리프레시 토큰
 
 #### Web Browser Configuration
-- `HEADLESS`: 브라우저 헤드리스 모드 설정 (true/false, 기본값: true)
+- `HEADLESS`: 브라우저 헤드리스 모드 설정 (`true`/`false`, 기본값: `true`)
 
 #### JWT Configuration
-- `JWT_SECRET`: JWT 시크릿 키
-- `JWT_USER_ID`: JWT 사용자 ID (기본값: 1)
-- `JWT_USER_EMAIL`: JWT 사용자 이메일 (선택)
-- `JWT_USER_PROVIDER`: JWT 사용자 프로바이더 (기본값: test)
-- `JWT_TOKEN`: JWT 토큰 (자동 갱신됨)
+- `JWT_TOKEN`: JWT 토큰
 - `JWT_REFRESH_TOKEN`: JWT 리프레시 토큰 (선택)
 
 ## 실행 방법
@@ -132,22 +128,18 @@ pytest -v -s
 
 ### Jenkins
 
-프로젝트는 Jenkins 파이프라인을 통해 자동화된 테스트를 실행합니다.
+두 개의 파이프라인이 제공됩니다.
 
-**Jenkins Credentials 설정:**
-- `todolist_dev_env_test`: 환경 변수 파일 (Secret file)
+- `ci/Jenkinsfile.test`: 최신 크리덴셜로 가상환경 생성 → 의존성 설치/Playwright 설치 → `ENV_FILE`에서 `BACKEND_BASE_URL`을 추출해 주입하고 JWT/소셜 토큰을 환경 변수로 주입 → pytest 실행 → `Result/**/*.html` 아카이브
+- `ci/Jenkinsfile.refresh`: 토큰 갱신 전용 잡. 가상환경 구성 후 `ci/check_token_status.py`를 실행해 JWT/Kakao/Naver 토큰을 갱신하고 Jenkins 크리덴셜(`todolist_dev` 도메인)에 업데이트.
+
+**Jenkins Credentials 예시:**
+- `todolist_dev_env_test`: ENV_FILE로 전달되는 환경 변수 파일 (Secret file, `BACKEND_BASE_URL` 포함)
 - `JWT_TOKEN`, `JWT_REFRESH_TOKEN`: JWT 토큰 (Secret text)
 - `KAKAO_ACCESS_TOKEN`, `KAKAO_REFRESH_TOKEN`: Kakao OAuth 토큰 (Secret text)
 - `NAVER_ACCESS_TOKEN`, `NAVER_REFRESH_TOKEN`: Naver OAuth 토큰 (Secret text)
-- `jenkins-admin`: Jenkins 관리자 계정 (Username with password)
-
-**파이프라인 단계:**
-1. Python 환경 설정 (가상 환경 생성 및 패키지 설치)
-2. 테스트 실행 (환경 변수 주입 및 pytest 실행)
-3. 테스트 리포트 아카이브
-
-**환경 변수 fallback:**
-- Jenkins에서 `ENV_FILE` credential이 제공되지 않거나 파일이 존재하지 않을 경우, 워크스페이스의 `.env-dev-test` 파일을 자동으로 사용합니다.
+- `KAKAO_REST_API_KEY`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`: 소셜 갱신에 필요
+- `jenkins-admin`: Jenkins 기본 인증 계정 (Username with password)
 
 ### GitHub Actions
 
@@ -192,11 +184,9 @@ flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
 
 ## 토큰 관리
 
-프로젝트는 자동으로 토큰을 검증하고 갱신합니다:
-
-- **JWT 토큰**: `ensure_valid_jwt_token()` 함수가 기존 토큰을 검증하고, 만료된 경우 새로 발급합니다.
-- **OAuth 토큰 (Kakao/Naver)**: `ensure_valid_oauth_token()` 함수가 액세스 토큰을 검증하고, 만료된 경우 리프레시 토큰을 사용하여 갱신합니다.
-- 갱신된 토큰은 자동으로 환경 변수 파일에 업데이트됩니다.
+- 로그인 테스트는 `KAKAO_ACCESS_TOKEN`, `NAVER_ACCESS_TOKEN` 환경변수를 사용해 소셜 로그인 API를 호출하고, 응답의 `token`, `refreshToken` 키를 검증합니다 (`tests/test_login.py`).
+- Jenkins 환경에서는 `ci/check_token_status.py`와 `Jenkinsfile.refresh`를 통해 JWT/Kakao/Naver 토큰을 주기적으로 갱신해 크리덴셜 스토어에 반영할 수 있습니다.
+- 로컬/CI 테스트 실행 시에는 유효한 JWT/소셜 토큰을 `.env` 또는 Jenkins 크리덴셜을 통해 주입해야 합니다.
 
 ## 기술 스택
 
@@ -209,8 +199,7 @@ flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
 
 ## 참고사항
 
-- Web 테스트의 경우 Playwright 브라우저가 설치되어 있어야 합니다.
-- API 테스트는 실제 API 서버가 실행 중이어야 합니다.
-- OAuth 테스트를 위해서는 해당 OAuth 서비스의 유효한 인증 정보가 필요합니다.
-- JWT 토큰이 필요한 테스트의 경우, 토큰이 자동으로 발급되거나 `.env` 파일에 유효한 토큰을 설정해야 합니다.
-- Jenkins 환경에서는 credential을 통해 환경 변수가 주입되며, 로컬 환경에서는 `.env` 파일을 사용합니다.
+- `conftest.py`가 테스트 시작 시 백엔드(`BACKEND_BASE_URL`)/프론트엔드(`WEB_BASE_URL`)의 `/health` 엔드포인트를 체크합니다. 응답이 기대 형태가 아니면 테스트를 중단합니다.
+- Web 테스트를 위해서는 Playwright 브라우저가 설치되어 있어야 합니다 (`playwright install chromium`).
+- API 테스트는 실제 API 서버가 동작 중이어야 합니다.
+- OAuth/JWT 테스트에는 유효한 토큰이 필요하며 자동 갱신 로직은 CI 토큰 매니저(`Jenkinsfile.refresh`)에 한정됩니다.

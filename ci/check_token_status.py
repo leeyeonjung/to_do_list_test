@@ -112,10 +112,8 @@ def get_new_naver_token():
 if __name__ == "__main__":
 
     # ======================= jwt token =======================
-    new_jwt_token = get_new_jwt_token()
-    print("new_jwt_token: ", new_jwt_token)
+    new_jwt_token = json.loads(get_new_jwt_token())
     new_jwt_token_valid = is_jwt_token_valid(new_jwt_token["token"])
-    print("new_jwt_token_valid: ", new_jwt_token_valid)
 
     if new_jwt_token_valid:
         new_jwt_token = new_jwt_token["token"]
@@ -146,9 +144,7 @@ if __name__ == "__main__":
 
     # ======================= kakao token =======================
     new_kakao_token = get_new_kakao_token()
-    print("new_kakao_token: ", new_kakao_token)
     new_kakao_token_valid = is_kakao_token_valid(new_kakao_token["access_token"])
-    print("new_kakao_token_valid: ", new_kakao_token_valid)
 
     if new_kakao_token_valid:
         new_kakao_access_token = new_kakao_token["access_token"]

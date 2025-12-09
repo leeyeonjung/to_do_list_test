@@ -2,6 +2,7 @@
 토큰 상태 확인 유틸리티
 """
 
+import logging
 import os
 from requests.auth import HTTPBasicAuth
 import json
@@ -19,6 +20,8 @@ from src.utils.env_loader import load_env_files
 # .env 파일 로드
 load_env_files()
 
+log = logging.getLogger(__name__)
+
 
 jenkins_url = "http://3.36.219.242:8080"
 credential_domain = "todolist_dev"
@@ -26,87 +29,67 @@ user = os.getenv("JENKINS_USER")
 password = os.getenv("JENKINS_PASS")
 
 
-#===========공통 함수===============
-def validate_token(url, access_token, timeout=5):
-    """토큰 유효성 검증 공통 함수"""
+#===========jwt token validation===============
+def is_jwt_token_valid(access_token):
+
+    url = f"{os.getenv('BACKEND_BASE_URL')}/api/auth/me"
     headers = {"Authorization": f"Bearer {access_token}"}
-    res = requests.get(url, headers=headers, timeout=timeout)
-    return res.status_code == 200
 
+    res = requests.get(url, headers=headers, timeout=5)
 
-def update_jenkins_credential(credential_id, secret):
-    """Jenkins credential 업데이트 공통 함수"""
-    url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/{credential_id}"
-    headers = {"Content-Type": "application/json"}
-    auth = HTTPBasicAuth(user, password)
-    data = json.dumps({
-        "credentials": {
-            "scope": "GLOBAL",
-            "id": credential_id,
-            "secret": secret,
-            "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"
-        }
-    })
-    response = requests.post(url, headers=headers, auth=auth, data=data)
-    return response.status_code == 200
-
-
-def process_token_refresh(token_type, get_token_func, validate_url, access_token_key, refresh_token_key=None):
-    """토큰 갱신 및 Jenkins 업데이트 프로세스 공통 함수"""
-    new_token = get_token_func()
-    if not new_token:
-        print(f"{token_type} Token 갱신 실패")
-        return False
-    
-    access_token = new_token.get(access_token_key)
-    if not access_token:
-        print(f"{token_type} Token에서 access_token을 찾을 수 없습니다")
-        return False
-    
-    if not validate_token(validate_url, access_token):
-        print(f"{token_type} Token 검증 실패")
-        return False
-    
-    # Access token 업데이트
-    access_credential_id = f"{token_type}_TOKEN" if token_type == "JWT" else f"{token_type}_ACCESS_TOKEN"
-    access_success = update_jenkins_credential(access_credential_id, access_token)
-    
-    # Refresh token 업데이트 (있는 경우)
-    refresh_success = True
-    if refresh_token_key and refresh_token_key in new_token:
-        refresh_token = new_token.get(refresh_token_key)
-        refresh_credential_id = f"{token_type}_REFRESH_TOKEN"
-        refresh_success = update_jenkins_credential(refresh_credential_id, refresh_token)
-    
-    if access_success and refresh_success:
-        print(f"{token_type} Token 업데이트 성공")
+    if res.status_code == 200:
         return True
-    else:
-        print(f"{token_type} Token 업데이트 실패")
-        return False
-
 
 #===========jwt token refresh===============
 def get_new_jwt_token():
     url = f"{os.getenv('BACKEND_BASE_URL')}/api/auth/refresh"
-    payload = {"refreshToken": os.getenv("JWT_REFRESH_TOKEN")}
+    payload = {
+        "refreshToken": os.getenv("JWT_REFRESH_TOKEN")
+        }
+
     res = requests.post(url, json=payload, timeout=10)
     if res.status_code == 200:
         return res.json()
-    return None
+
+
+#===========kakao token validation===============
+def is_kakao_token_valid(access_token):
+
+    url = "https://kapi.kakao.com/v2/user/me"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    res = requests.get(url, headers=headers, timeout=5)
+
+    if res.status_code == 200:
+        return True
 
 #===========kakao token refresh===============
 def get_new_kakao_token():
-    url = "https://kauth.kakao.com/oauth/token"
+    url = "https://kauth.kakao.com/oauth/token"  # 카카오 토큰 갱신 URL
     data = {
         'grant_type': 'refresh_token',
-        'client_id': os.getenv("KAKAO_REST_API_KEY"),
-        'refresh_token': os.getenv("KAKAO_REFRESH_TOKEN")
+        'client_id': os.getenv("KAKAO_REST_API_KEY"),  # 카카오 개발자 콘솔에서 발급받은 client_id
+        'refresh_token': os.getenv("KAKAO_REFRESH_TOKEN")  # 기존의 refresh_token
     }
+
+    # POST 요청을 통해 새로운 토큰을 요청
     res = requests.post(url, data=data)
+
+    # 요청이 성공하면 응답 반환
     if res.status_code == 200:
-        return res.json()
-    return None
+        return res.json()  # 새로운 access_token 반환
+
+
+#===========naver token validation===============
+def is_naver_token_valid(access_token):
+
+    url = "https://openapi.naver.com/v1/nid/me"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    res = requests.get(url, headers=headers, timeout=5)
+
+    if res.status_code == 200:
+        return True
 
 #===========naver token refresh===============
 def get_new_naver_token():
@@ -117,21 +100,83 @@ def get_new_naver_token():
         'client_secret': os.getenv("NAVER_CLIENT_SECRET"),
         'refresh_token': os.getenv("NAVER_REFRESH_TOKEN")
     }
+
+    # POST 요청을 통해 새로운 토큰을 요청
     res = requests.post(url, data=data)
+
+    # 요청이 성공하면 응답 반환
     if res.status_code == 200:
         return res.json()
-    return None
+
+
+#===========post token to jenkins===============
+def post_token_to_jenkins(credential_id, token):
+    """
+    Jenkins에 토큰을 POST 요청으로 업데이트하는 함수
+    :param credential_id: 토큰의 ID (JWT_TOKEN, JWT_REFRESH_TOKEN 등)
+    :param token: 토큰 값
+    :param user: Jenkins 사용자 이름
+    :param password: Jenkins 비밀번호
+    :return: 요청의 응답 객체
+    """
+    url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/{credential_id}"
+    headers = {"Content-Type": "application/json"}
+    auth = HTTPBasicAuth(user, password)
+    data = json.dumps({
+        "credentials": {
+            "scope": "GLOBAL",
+            "id": credential_id,
+            "secret": token,
+            "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"
+        }
+    })
+    return requests.post(url, headers=headers, auth=auth, data=data)
 
 
 if __name__ == "__main__":
+
     # ======================= jwt token =======================
-    jwt_validate_url = f"{os.getenv('BACKEND_BASE_URL')}/api/auth/me"
-    process_token_refresh("JWT", get_new_jwt_token, jwt_validate_url, "token", "refreshToken")
+    new_jwt_token = get_new_jwt_token()
+    new_jwt_token_valid = is_jwt_token_valid(new_jwt_token["token"])
+
+    if new_jwt_token_valid:
+
+        # POST 요청
+        jwt_access_token_response = post_token_to_jenkins("JWT_TOKEN", new_jwt_token["token"])
+        jwt_refresh_token_response = post_token_to_jenkins("JWT_REFRESH_TOKEN", new_jwt_token["refreshToken"])
+
+        if jwt_access_token_response.status_code == 200 and jwt_refresh_token_response.status_code == 200:
+            print("JWT Token 업데이트 성공")
+        else:
+            print("JWT Token 업데이트 실패")
+
 
     # ======================= kakao token =======================
-    kakao_validate_url = "https://kapi.kakao.com/v2/user/me"
-    process_token_refresh("KAKAO", get_new_kakao_token, kakao_validate_url, "access_token")
+    new_kakao_token = get_new_kakao_token()
+    new_kakao_token_valid = is_kakao_token_valid(new_kakao_token["access_token"])
+
+    if new_kakao_token_valid:
+
+        # POST 요청
+        kakao_access_token_response = post_token_to_jenkins("KAKAO_ACCESS_TOKEN", new_kakao_token["access_token"])
+
+        if kakao_access_token_response.status_code == 200:
+            print("Kakao Token 업데이트 성공")
+        else:
+            print("Kakao Token 업데이트 실패")
+
 
     # ======================= naver token =======================
-    naver_validate_url = "https://openapi.naver.com/v1/nid/me"
-    process_token_refresh("NAVER", get_new_naver_token, naver_validate_url, "access_token", "refresh_token")
+    new_naver_token = get_new_naver_token()
+    new_naver_token_valid = is_naver_token_valid(new_naver_token["access_token"])
+
+    if new_naver_token_valid:
+
+        # POST 요청
+        naver_access_token_response = post_token_to_jenkins("NAVER_ACCESS_TOKEN", new_naver_token["access_token"])
+        naver_refresh_token_response = post_token_to_jenkins("NAVER_REFRESH_TOKEN", new_naver_token["refresh_token"])
+
+        if naver_access_token_response.status_code == 200 and naver_refresh_token_response.status_code == 200:
+            print("Naver Token 업데이트 성공")
+        else:
+            print("Naver Token 업데이트 실패")

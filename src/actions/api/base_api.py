@@ -1,6 +1,5 @@
 """requests를 사용한 API 테스트용 기본 API 클래스"""
 import requests
-from typing import Dict, Any, Optional
 import logging
 
 log = logging.getLogger(__name__)
@@ -9,7 +8,7 @@ log = logging.getLogger(__name__)
 class BaseAPI:
     """API 페이지 객체의 기본 클래스"""
 
-    def __init__(self, base_url: str, headers: Optional[Dict[str, str]] = None):
+    def __init__(self, base_url, headers=None):
         """
         BaseAPI 초기화.
 
@@ -23,7 +22,7 @@ class BaseAPI:
         if self.headers:
             self.session.headers.update(self.headers)
 
-    def get(self, endpoint: str, **kwargs) -> requests.Response:
+    def get(self, endpoint, **kwargs):
         """
         GET 요청 전송.
 
@@ -40,8 +39,7 @@ class BaseAPI:
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def post(self, endpoint: str, data: Optional[Any] = None,
-             json: Optional[Dict] = None, **kwargs) -> requests.Response:
+    def post(self, endpoint, data=None, json=None, **kwargs):
         """
         POST 요청 전송.
 
@@ -61,8 +59,7 @@ class BaseAPI:
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def put(self, endpoint: str, data: Optional[Any] = None,
-            json: Optional[Dict] = None, **kwargs) -> requests.Response:
+    def put(self, endpoint, data=None, json=None, **kwargs):
         """
         PUT 요청 전송.
 
@@ -82,7 +79,7 @@ class BaseAPI:
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def delete(self, endpoint: str, **kwargs) -> requests.Response:
+    def delete(self, endpoint, **kwargs):
         """
         DELETE 요청 전송.
 
@@ -98,4 +95,5 @@ class BaseAPI:
         response = self.session.delete(url, **kwargs)
         log.info(f"Response status: {response.status_code}")
         return response
+
 

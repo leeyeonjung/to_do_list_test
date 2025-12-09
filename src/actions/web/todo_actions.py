@@ -1,5 +1,4 @@
 """웹 테스트용 할일 액션"""
-from playwright.sync_api import Page
 from src.locators.web import todo_locators
 from src.actions.web.base_page import BasePage
 import logging
@@ -10,7 +9,7 @@ log = logging.getLogger(__name__)
 class TodoActions:
     """할일 페이지 액션"""
 
-    def __init__(self, page: Page, timeout: int = 10000):
+    def __init__(self, page, timeout=10000):
         """
         TodoActions 초기화.
 
@@ -23,7 +22,7 @@ class TodoActions:
         self.page = page
         self.timeout = timeout
 
-    def add_todo(self, title: str):
+    def add_todo(self, title):
         """
         할일 추가.
 
@@ -35,7 +34,7 @@ class TodoActions:
         self.base_page.click(self.locators.SAVE_BUTTON)
         log.info(f"Added todo: {title}")
 
-    def view_todos(self) -> bool:
+    def view_todos(self):
         """
         할일 리스트 확인.
 
@@ -52,7 +51,7 @@ class TodoActions:
         self.base_page.click(self.locators.COMPLETE_CHECKBOX)
         log.info("Completed todo")
 
-    def verify_todo_completed(self) -> bool:
+    def verify_todo_completed(self):
         """
         할일 완료 상태 확인.
 
@@ -133,7 +132,7 @@ class TodoActions:
 
         log.info("Delete cancelled")
 
-    def get_todo_count(self) -> int:
+    def get_todo_count(self):
         """
         할일 개수 반환.
 

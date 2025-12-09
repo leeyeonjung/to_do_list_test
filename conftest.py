@@ -8,15 +8,9 @@ import pytest
 import requests
 from playwright.sync_api import sync_playwright
 
-from src.actions.api.base_api import BaseAPI
 from src.actions.web.auth_actions import AuthActions
 from src.actions.web.todo_actions import TodoActions
 from src.utils.env_loader import load_env_files
-from src.utils.token_validator import (
-    ensure_valid_jwt_token,
-    ensure_valid_oauth_token,
-    validate_jwt_token,
-)
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +46,7 @@ def get_result_base_dir():
 
 
 # Health Check (전체 테스트 시작 전 서버 상태 확인)
-def _check_backend_health() -> bool:
+def _check_backend_health():
     """
     백엔드 Health Check: GET {BACKEND_BASE_URL}/health
     기대 응답: 200, JSON { status: "ok", message: "Server is running" }
@@ -81,7 +75,7 @@ def _check_backend_health() -> bool:
     return True
 
 
-def _check_frontend_health() -> bool:
+def _check_frontend_health():
     """
     프론트엔드 Health Check: GET {WEB_BASE_URL}/health
     기대 응답: 200, text/plain, body: "healthy"
@@ -108,7 +102,7 @@ def _check_frontend_health() -> bool:
     return True
 
 
-def pytest_sessionstart(session: pytest.Session) -> None:  # type: ignore[override]
+def pytest_sessionstart(session):
     """
     pytest 세션 시작 시 가장 먼저 호출되어
     1. 백엔드/프론트엔드 헬스 체크를 수행하고,
@@ -130,110 +124,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:  # type: ignore[overri
     log.info("[HEALTH] 테스트를 계속 진행합니다.")
 
 
-# JWT Token Fixtures
-@pytest.fixture(scope="session")
-def jwt_token(api_base_url):
-    """
-    JWT 토큰 fixture
-
-    기본값은 테스트용 /api/auth/test-token을 사용하여 JWT를 발급하고,
-    .env에 JWT_TOKEN / JWT_USER를 갱신합니다.
-
-    소셜 로그인(Kakao/Naver) 플로우를 테스트할 때는
-    --login-mode=kakao|naver 옵션을 사용하고, 이 fixture를 쓰지 않는
-    web_page 동작을 선택합니다.
-    """
-    # .env에서 사용자 정보 로드 (토큰 발급용)
-    # 빈 문자열("")인 경우 기본값 "1"을 사용하도록 처리
-    user_id = os.getenv("JWT_USER_ID") or "1"
-    email = os.getenv("JWT_USER_EMAIL")
-    provider = os.getenv("JWT_USER_PROVIDER", "test")
-
-    log.info("JWT 발급 모드: test (테스트용 /api/auth/test-token 사용)")
-
-    # 기존 토큰 확인
-    existing_token = os.getenv("JWT_TOKEN")
-
-    # 기존 토큰이 있으면 유효성 검증
-    if existing_token:
-        is_valid, _ = validate_jwt_token(
-            backend_base_url=api_base_url,
-            token=existing_token,
-        )
-
-        if is_valid:
-            log.info("기존 JWT 토큰이 유효합니다.")
-            return existing_token
-
-    # 토큰이 없거나 유효하지 않으면 새로 발급
-    log.info("JWT 토큰이 없거나 유효하지 않습니다. 새로 발급받습니다.")
-    token = ensure_valid_jwt_token(
-        user_id=int(user_id),
-        email=email if email else None,
-        provider=provider,
-        backend_base_url=api_base_url,
-    )
-
-    return token
-
-
-# API Fixtures
-@pytest.fixture(scope="session")
-def api_base_url():
-    """
-    환경 변수에서 API 기본 URL을 가져옴
-
-    Returns:
-        str: API 기본 URL
-    """
-    return os.getenv("BACKEND_BASE_URL")
-
-
-@pytest.fixture
-def api_client(api_base_url):
-    """
-    API 클라이언트 fixture 생성
-
-    BaseAPI 인스턴스를 생성하여 API 테스트에 사용
-
-    Args:
-        api_base_url: API 기본 URL fixture
-
-    Returns:
-        BaseAPI: API 클라이언트 인스턴스
-    """
-    return BaseAPI(base_url=api_base_url)
-
-
-# Web Fixtures
-@pytest.fixture(scope="session")
-def web_base_url():
-    """
-    환경 변수에서 웹 기본 URL을 가져옴
-
-    Returns:
-        str: 웹 기본 URL
-    """
-    web_url = os.getenv("WEB_BASE_URL")
-    if not web_url:
-        log.error("WEB_BASE_URL이 .env에 설정되어 있지 않습니다.")
-        return ""
-    return web_url
-
-
-@pytest.fixture
-def login_mode(request):
-    """
-    로그인 모드 결정용 fixture
-
-    - 기본값: "" (빈값) → JWT 모드
-    - 테스트에서 @pytest.mark.parametrize("login_mode", ["kakao"], indirect=True)
-      처럼 지정하면 해당 값이 들어옴.
-    """
-    return getattr(request, "param", "")
-
-
-def _setup_page_with_token(context, page, jwt_token, login_mode_name=""):
+def _setup_page_with_token(context, page, jwt_token):
     """
     페이지에 JWT 토큰을 설정하는 헬퍼 함수
     
@@ -247,12 +138,10 @@ def _setup_page_with_token(context, page, jwt_token, login_mode_name=""):
     context.add_init_script(
         f'window.localStorage.setItem("token", "{jwt_token}");'
     )
-    mode_text = f"{login_mode_name} " if login_mode_name else ""
-    log.info(f"{mode_text}JWT 토큰이 localStorage에 주입됨")
+    log.info("JWT 토큰이 localStorage에 주입됨")
     
     # 모든 API 요청에 Authorization 헤더 추가
     def handle_route(route):
-        log.debug(f"Route intercepted: {route.request.url}")
         headers = route.request.headers.copy()
         headers["Authorization"] = f"Bearer {jwt_token}"
         route.continue_(headers=headers)
@@ -262,11 +151,11 @@ def _setup_page_with_token(context, page, jwt_token, login_mode_name=""):
     page.route("**/auth/**", handle_route)
     if web_base_url:
         page.route(f"{web_base_url}/**", handle_route)
-    log.info(f"{mode_text}JWT 토큰이 네트워크 요청에 자동 추가됨")
+    log.info("JWT 토큰이 네트워크 요청에 자동 추가됨")
 
 
 @pytest.fixture(scope="function")
-def web_page(request, login_mode):
+def web_page():
     """
     Playwright 페이지 fixture
 
@@ -287,53 +176,8 @@ def web_page(request, login_mode):
         browser = p.chromium.launch(headless=os.getenv("HEADLESS", "true").lower() == "true")
         context = browser.new_context()
 
-        # 소셜 로그인 모드(kakao/naver): .env의 AccessToken/RefreshToken을 사용하여 JWT 발급 후 주입
-        if login_mode == "kakao":
-            log.info("Kakao 로그인 모드: .env의 KAKAO_ACCESS_TOKEN/REFRESH_TOKEN을 사용하여 JWT 발급")
-            jwt_token = ensure_valid_oauth_token(
-                provider="kakao",
-                backend_base_url=request.getfixturevalue("api_base_url"),
-            )
-            
-            if not jwt_token:
-                log.error("Kakao JWT 토큰 발급에 실패했습니다.")
-                page = context.new_page()
-                yield page
-                context.close()
-                browser.close()
-                return
-            
-            page = context.new_page()
-            _setup_page_with_token(context, page, jwt_token, "Kakao")
-            yield page
-            context.close()
-            browser.close()
-            return
-        
-        if login_mode == "naver":
-            log.info("Naver 로그인 모드: .env의 NAVER_ACCESS_TOKEN/REFRESH_TOKEN을 사용하여 JWT 발급")
-            jwt_token = ensure_valid_oauth_token(
-                provider="naver",
-                backend_base_url=request.getfixturevalue("api_base_url"),
-            )
-            
-            if not jwt_token:
-                log.error("Naver JWT 토큰 발급에 실패했습니다.")
-                page = context.new_page()
-                yield page
-                context.close()
-                browser.close()
-                return
-            
-            page = context.new_page()
-            _setup_page_with_token(context, page, jwt_token, "Naver")
-            yield page
-            context.close()
-            browser.close()
-            return
-
         # 기본 모드: JWT를 localStorage/Authorization 헤더에 주입
-        jwt_token = request.getfixturevalue("jwt_token")
+        jwt_token = os.getenv("JWT_TOKEN")
         page = context.new_page()
         _setup_page_with_token(context, page, jwt_token)
 
@@ -343,7 +187,7 @@ def web_page(request, login_mode):
 
 
 @pytest.fixture
-def todo_page(web_page, web_base_url):
+def todo_page(web_page):
     """
     할일 페이지 액션 생성 (JWT로 이미 로그인된 상태를 전제)
 
@@ -359,7 +203,7 @@ def todo_page(web_page, web_base_url):
     """
     # JWT 토큰을 사용한 로그인 설정
     auth = AuthActions(web_page)
-    auth.setup_jwt_login(web_base_url)
+    auth.setup_jwt_login()
 
     return TodoActions(web_page)
 

@@ -1,16 +1,22 @@
 """requests를 사용한 API 테스트"""
+import os
 import pytest_check as check
+from src.actions.api.base_api import BaseAPI
+
+URL = os.getenv("BACKEND_BASE_URL")
 
 
-def test_get_todos(api_client):
+def test_get_todos():
     """모든 할일 조회 테스트"""
+    api_client = BaseAPI(URL)
     response = api_client.get("/api/todos")
     check.equal(response.status_code, 200)
     check.is_true(isinstance(response.json(), list))
 
 
-def test_create_todo(api_client):
+def test_create_todo():
     """새 할일 생성 테스트"""
+    api_client = BaseAPI(URL)
     todo_data = {
         "title": "Test Todo",
         "description": "This is a test todo",
@@ -22,8 +28,9 @@ def test_create_todo(api_client):
     check.equal(data["title"], todo_data["title"])
 
 
-def test_get_todo_by_id(api_client):
+def test_get_todo_by_id():
     """ID로 할일 조회 테스트"""
+    api_client = BaseAPI(URL)
     # 할일 생성
     todo_data = {"title": "Test Todo", "completed": False}
     create_response = api_client.post("/api/todos", json=todo_data)
@@ -36,8 +43,9 @@ def test_get_todo_by_id(api_client):
     check.equal(response.json()["id"], todo_id)
 
 
-def test_update_todo(api_client):
+def test_update_todo():
     """할일 수정 테스트"""
+    api_client = BaseAPI(URL)
     # 할일 생성
     todo_data = {"title": "Original Todo", "completed": False}
     create_response = api_client.post("/api/todos", json=todo_data)
@@ -51,8 +59,9 @@ def test_update_todo(api_client):
     check.equal(response.json()["title"], update_data["title"])
 
 
-def test_delete_todo(api_client):
+def test_delete_todo():
     """할일 삭제 테스트"""
+    api_client = BaseAPI(URL)
     # 할일 생성
     todo_data = {"title": "Todo to Delete", "completed": False}
     create_response = api_client.post("/api/todos", json=todo_data)

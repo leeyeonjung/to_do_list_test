@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 log = logging.getLogger(__name__)
 
 
-def get_project_root() -> Path:
+def get_project_root():
     """
     프로젝트 루트 디렉토리 경로를 반환합니다.
     

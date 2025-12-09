@@ -1,5 +1,4 @@
 """Playwright를 사용한 웹 테스트용 기본 페이지 클래스"""
-from playwright.sync_api import Page, Locator
 import logging
 
 log = logging.getLogger(__name__)
@@ -8,7 +7,7 @@ log = logging.getLogger(__name__)
 class BasePage:
     """웹 페이지 객체의 기본 클래스"""
 
-    def __init__(self, page: Page, timeout: int = 10000):
+    def __init__(self, page, timeout=10000):
         """
         BasePage 초기화.
 
@@ -19,7 +18,7 @@ class BasePage:
         self.page = page
         self.timeout = timeout
 
-    def find_element(self, selector: str) -> Locator:
+    def find_element(self, selector):
         """
         요소 찾기.
 
@@ -34,7 +33,7 @@ class BasePage:
         log.debug(f"Element found: {selector}")
         return element
 
-    def click(self, selector: str):
+    def click(self, selector):
         """
         요소 클릭.
 
@@ -45,7 +44,7 @@ class BasePage:
         element.click()
         log.info(f"Clicked on element: {selector}")
 
-    def fill(self, selector: str, text: str):
+    def fill(self, selector, text):
         """
         입력 필드에 텍스트 입력.
 
@@ -57,7 +56,7 @@ class BasePage:
         element.fill(text)
         log.info(f"Filled element {selector} with text: {text}")
 
-    def is_visible(self, selector: str, timeout: int | None = None) -> bool:
+    def is_visible(self, selector, timeout=None):
         """
         요소가 보이는지 확인.
 
@@ -79,7 +78,7 @@ class BasePage:
         element.wait_for(state="visible", timeout=effective_timeout)
         return True
 
-    def navigate(self, url: str):
+    def navigate(self, url):
         """
         URL로 이동.
 
@@ -89,7 +88,7 @@ class BasePage:
         self.page.goto(url)
         log.info(f"Navigated to: {url}")
 
-    def wait_for_load_state(self, state: str = "load"):
+    def wait_for_load_state(self, state="load"):
         """
         페이지 로드 상태 대기.
 

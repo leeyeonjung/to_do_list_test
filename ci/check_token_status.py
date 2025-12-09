@@ -70,8 +70,8 @@ if __name__ == "__main__":
         new_naver_refresh_token = new_token["refresh_token"]
 
         # POST 요청을 보내는 부분
-        access_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/api_access_token"
-        refresh_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/api_refresh_token"
+        naver_access_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/NAVER_ACCESS_TOKEN"
+        naver_refresh_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/NAVER_REFRESH_TOKEN"
         headers = {
             "Content-Type": "application/json"
         }
@@ -80,12 +80,12 @@ if __name__ == "__main__":
         auth = HTTPBasicAuth(user, password)
 
         # POST 요청
-        access_token_response = requests.post(access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "api_access_token", "secret": new_naver_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
-        refresh_token_response = requests.post(refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "api_refresh_token", "secret": new_naver_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
+        naver_access_token_response = requests.post(naver_access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "api_access_token", "secret": new_naver_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
+        naver_refresh_token_response = requests.post(naver_refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "api_refresh_token", "secret": new_naver_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
-        print(access_token_response.status_code)
-        print(refresh_token_response.status_code)
-        if access_token_response.status_code == 200 and refresh_token_response.status_code == 200:
+        print(naver_access_token_response.status_code)
+        print(naver_refresh_token_response.status_code)
+        if naver_access_token_response.status_code == 200 and naver_refresh_token_response.status_code == 200:
             print("Naver Token 업데이트 성공")
         else:
             print("Naver Token 업데이트 실패")

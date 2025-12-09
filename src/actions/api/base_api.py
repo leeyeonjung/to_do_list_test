@@ -22,77 +22,71 @@ class BaseAPI:
         if self.headers:
             self.session.headers.update(self.headers)
 
-    def get(self, endpoint, **kwargs):
+    def get(self, endpoint):
         """
         GET 요청 전송.
 
         Args:
             endpoint: API 엔드포인트
-            **kwargs: requests.get에 대한 추가 인자
 
         Returns:
             Response 객체
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         log.info(f"GET {url}")
-        response = self.session.get(url, **kwargs)
+        response = self.session.get(url)
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def post(self, endpoint, data=None, json=None, **kwargs):
+    def post(self, endpoint, payload=None):
         """
         POST 요청 전송.
 
         Args:
             endpoint: API 엔드포인트
-            data: 요청 본문에 전송할 데이터
-            json: 요청 본문에 전송할 JSON 데이터
-            **kwargs: requests.post에 대한 추가 인자
+            payload: 요청 본문 JSON
 
         Returns:
             Response 객체
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         log.info(f"POST {url}")
-        log.debug(f"Request data: {data or json}")
-        response = self.session.post(url, data=data, json=json, **kwargs)
+        log.debug(f"Request data: {payload}")
+        response = self.session.post(url, json=payload)
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def put(self, endpoint, data=None, json=None, **kwargs):
+    def put(self, endpoint, payload=None):
         """
         PUT 요청 전송.
 
         Args:
             endpoint: API 엔드포인트
-            data: 요청 본문에 전송할 데이터
-            json: 요청 본문에 전송할 JSON 데이터
-            **kwargs: requests.put에 대한 추가 인자
+            payload: 요청 본문 JSON
 
         Returns:
             Response 객체
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         log.info(f"PUT {url}")
-        log.debug(f"Request data: {data or json}")
-        response = self.session.put(url, data=data, json=json, **kwargs)
+        log.debug(f"Request data: {payload}")
+        response = self.session.put(url, json=payload)
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def delete(self, endpoint, **kwargs):
+    def delete(self, endpoint):
         """
         DELETE 요청 전송.
 
         Args:
             endpoint: API 엔드포인트
-            **kwargs: requests.delete에 대한 추가 인자
 
         Returns:
             Response 객체
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         log.info(f"DELETE {url}")
-        response = self.session.delete(url, **kwargs)
+        response = self.session.delete(url)
         log.info(f"Response status: {response.status_code}")
         return response
         

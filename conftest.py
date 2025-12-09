@@ -17,7 +17,6 @@ log = logging.getLogger(__name__)
 # .env 파일 로드 (공통 모듈 사용)
 load_env_files()
 
-
 # Utility Functions
 def get_timestamp():
     """
@@ -105,9 +104,7 @@ def _check_frontend_health():
 def pytest_sessionstart(session):
     """
     pytest 세션 시작 시 가장 먼저 호출되어
-    1. 백엔드/프론트엔드 헬스 체크를 수행하고,
-    2. 토큰 검증 및 갱신을 수행한다.
-    둘 중 하나라도 실패하면 전체 테스트를 종료한다.
+    백엔드/프론트엔드 헬스 체크를 수행
     """
     log.info("[HEALTH] 테스트 실행 전 서버 상태 점검 시작")
 

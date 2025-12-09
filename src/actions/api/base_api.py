@@ -95,5 +95,17 @@ class BaseAPI:
         response = self.session.delete(url, **kwargs)
         log.info(f"Response status: {response.status_code}")
         return response
+        
+        
+class LoginAPI(BaseAPI):
+    """소셜 로그인용 API 헬퍼"""
 
-
+    def request_social_login(self, provider, access_token):
+        url = f"{self.base_url}/api/auth/{provider}"
+        res = self.session.post(
+            url,
+            json={"accessToken": access_token},
+            headers={"Content-Type": "application/json"},
+            timeout=5,
+        )
+        return res

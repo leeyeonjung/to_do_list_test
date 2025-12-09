@@ -1,41 +1,34 @@
 """소셜 로그인(Kakao / Naver) 테스트"""
-import pytest_check as check
 import os
-from src.utils.token_validator import ensure_valid_oauth_token
+import pytest_check as check
+from src.actions.api.base_api import LoginAPI
+
+BASE_URL = os.getenv("BACKEND_BASE_URL")
 
 
-def test_kakao_login(api_base_url):
-    """
-    Kakao AccessToken/RefreshToken을 사용하여 JWT 발급 성공 여부 확인
-    
-    .env의 KAKAO_ACCESS_TOKEN, KAKAO_REFRESH_TOKEN을 사용하여
-    백엔드 API를 통해 JWT를 발급받고, 성공적으로 응답이 오면 테스트 통과
-    """
-    # Kakao JWT 토큰 가져오기
-    kakao_jwt = ensure_valid_oauth_token("kakao",backend_base_url=api_base_url,read_only=True)
+def test_kakao_login():
+    """Kakao AccessToken으로 JWT 발급 여부 확인"""
+    access_token = os.getenv("KAKAO_ACCESS_TOKEN")
 
-    import logging
-    log = logging.getLogger(__name__)
-    log.info(f"Kakao JWT: {kakao_jwt}")
+    res = LoginAPI(BASE_URL).request_social_login("kakao", access_token)
+    body = res.json()
 
-    log.info(os.getenv("KAKAO_ACCESS_TOKEN"))
-    log.info(os.getenv("KAKAO_REFRESH_TOKEN"))
-    
-    # JWT 토큰이 성공적으로 발급되었는지 확인
-    check.is_not_none(kakao_jwt, "Kakao JWT 토큰이 발급되지 않았습니다.")
-    check.not_equal(kakao_jwt, "", "Kakao JWT 토큰이 비어있습니다.")
+    check.equal(res.status_code, 200, "Kakao 로그인 응답 코드가 200이 아닙니다.")
+    check.is_in("token", body, "'token' 키가 없습니다.")
+    check.is_in("refreshToken", body, "'refreshToken' 키가 없습니다.")
+    check.not_equal(body.get("token", ""), "", "'token' 값이 비어있습니다.")
+    check.not_equal(body.get("refreshToken", ""), "", "'refreshToken' 값이 비어있습니다.")
 
 
-def test_naver_login(api_base_url):
-    """
-    Naver AccessToken/RefreshToken을 사용하여 JWT 발급 성공 여부 확인
-    
-    .env의 NAVER_ACCESS_TOKEN, NAVER_REFRESH_TOKEN을 사용하여
-    백엔드 API를 통해 JWT를 발급받고, 성공적으로 응답이 오면 테스트 통과
-    """
-    # Naver JWT 토큰 가져오기
-    naver_jwt = ensure_valid_oauth_token("naver",backend_base_url=api_base_url,read_only=True)
-    
-    # JWT 토큰이 성공적으로 발급되었는지 확인
-    check.is_not_none(naver_jwt, "Naver JWT 토큰이 발급되지 않았습니다.")
-    check.not_equal(naver_jwt, "", "Naver JWT 토큰이 비어있습니다.")
+def test_naver_login():
+    """Naver AccessToken으로 JWT 발급 여부 확인"""
+    access_token = os.getenv("NAVER_ACCESS_TOKEN")
+
+    res = LoginAPI(BASE_URL).request_social_login("naver", access_token)
+    body = res.json()
+
+    check.equal(res.status_code, 200, "Naver 로그인 응답 코드가 200이 아닙니다.")
+    check.is_in("token", body, "'token' 키가 없습니다.")
+    check.is_in("refreshToken", body, "'refreshToken' 키가 없습니다.")
+    check.not_equal(body.get("token", ""), "", "'token' 값이 비어있습니다.")
+    check.not_equal(body.get("refreshToken", ""), "", "'refreshToken' 값이 비어있습니다.")

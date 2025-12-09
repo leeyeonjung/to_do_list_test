@@ -114,14 +114,14 @@ if __name__ == "__main__":
 
     # ======================= jwt token =======================
     new_jwt_token = get_new_jwt_token()
-    new_jwt_token_valid = is_jwt_token_valid(new_jwt_token["access_token"])
+    new_jwt_token_valid = is_jwt_token_valid(new_jwt_token["token"])
 
     if new_jwt_token_valid:
-        new_jwt_access_token = new_jwt_token["token"]
+        new_jwt_token = new_jwt_token["token"]
         new_jwt_refresh_token = new_jwt_token["refreshToken"]
 
         # POST 요청을 보내는 부분
-        jwt_access_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/JWT_TOKEN"
+        jwt_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/JWT_TOKEN"
         jwt_refresh_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/JWT_REFRESH_TOKEN"
         headers = {
             "Content-Type": "application/json"
@@ -131,12 +131,12 @@ if __name__ == "__main__":
         auth = HTTPBasicAuth(user, password)
 
         # POST 요청
-        jwt_access_token_response = requests.post(jwt_access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "JWT_TOKEN", "secret": new_jwt_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
+        jwt_token_response = requests.post(jwt_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "JWT_TOKEN", "secret": new_jwt_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
         jwt_refresh_token_response = requests.post(jwt_refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "JWT_REFRESH_TOKEN", "secret": new_jwt_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
-        print("jwt_access_token_response.status_code: ", jwt_access_token_response.status_code)
+        print("jwt_token_response.status_code: ", jwt_token_response.status_code)
         print("jwt_refresh_token_response.status_code: ", jwt_refresh_token_response.status_code)
-        if jwt_access_token_response.status_code == 200 and jwt_refresh_token_response.status_code == 200:
+        if jwt_token_response.status_code == 200 and jwt_refresh_token_response.status_code == 200:
             print("JWT Token 업데이트 성공")
         else:
             print("JWT Token 업데이트 실패")

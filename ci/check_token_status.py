@@ -83,8 +83,8 @@ if __name__ == "__main__":
         access_token_response = requests.post(access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "api_access_token", "secret": new_naver_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
         refresh_token_response = requests.post(refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "api_refresh_token", "secret": new_naver_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
-        print(access_token_response.status_code)
-        print(refresh_token_response.status_code)
+        print(access_token_response.json())
+        print(refresh_token_response.json())
         if access_token_response.status_code == 200 and refresh_token_response.status_code == 200:
             print("Naver Token 업데이트 성공")
         else:

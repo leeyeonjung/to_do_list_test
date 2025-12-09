@@ -25,8 +25,8 @@ log = logging.getLogger(__name__)
 
 jenkins_url = "http://3.36.219.242:8080"
 credential_domain = "todolist_dev"
-user = os.getenv("USER")
-password = os.getenv("PASSWORD")
+user = os.getenv("JENKINS_USER")
+password = os.getenv("JENKINS_PASS")
 
 
 def is_token_valid(access_token):

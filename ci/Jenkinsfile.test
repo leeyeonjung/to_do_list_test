@@ -69,8 +69,9 @@ pipeline {
                                 echo "📌 Running Tests..."
 
                                 export BACKEND_BASE_URL="$(
-                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" | cut -d '=' -f2-
-                                    | sed 's/^"//;s/"$//' | tr -d '\\r' | tr -d '\\n' | tr -d ' '
+                                    grep -E '^BACKEND_BASE_URL=' "$ENV_FILE" \
+                                        | cut -d '=' -f2- \
+                                        | sed 's/^"//;s/"$//' | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
 
                                 export JWT_TOKEN

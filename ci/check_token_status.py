@@ -37,8 +37,9 @@ def is_jwt_token_valid(access_token):
 
     res = requests.get(url, headers=headers, timeout=5)
 
-    if res.status_code == 200:
-        return True
+    # if res.status_code == 200:
+    #     return True
+    return res.status_code, res.json()
 
 #===========jwt token refresh===============
 def get_new_jwt_token():

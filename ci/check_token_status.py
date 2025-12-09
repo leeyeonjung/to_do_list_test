@@ -58,7 +58,7 @@ def get_new_kakao_token():
 
     # 요청이 성공하면 응답 반환
     if res.status_code == 200:
-        return res.json()  # 새로운 access_token과 refresh_token 포함된 응답 반환
+        return res.json()  # 새로운 access_token 반환
 
 
 
@@ -102,11 +102,9 @@ if __name__ == "__main__":
 
     if new_kakao_token_valid:
         new_kakao_access_token = new_kakao_token["access_token"]
-        new_kakao_refresh_token = new_kakao_token["refresh_token"]
 
         # POST 요청을 보내는 부분
         kakao_access_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/KAKAO_ACCESS_TOKEN"
-        kakao_refresh_token_url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/KAKAO_REFRESH_TOKEN"
         headers = {
             "Content-Type": "application/json"
         }
@@ -116,11 +114,9 @@ if __name__ == "__main__":
 
         # POST 요청
         kakao_access_token_response = requests.post(kakao_access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "KAKAO_ACCESS_TOKEN", "secret": new_kakao_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
-        kakao_refresh_token_response = requests.post(kakao_refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "KAKAO_REFRESH_TOKEN", "secret": new_kakao_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
         print("kakao_access_token_response.status_code: ", kakao_access_token_response.status_code)
-        print("kakao_refresh_token_response.status_code: ", kakao_refresh_token_response.status_code)
-        if kakao_access_token_response.status_code == 200 and kakao_refresh_token_response.status_code == 200:
+        if kakao_access_token_response.status_code == 200:
             print("Kakao Token 업데이트 성공")
         else:
             print("Kakao Token 업데이트 실패")

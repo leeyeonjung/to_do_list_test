@@ -113,9 +113,7 @@ if __name__ == "__main__":
 
     # ======================= jwt token =======================
     new_jwt_token = get_new_jwt_token()
-    print("new_jwt_token: ", new_jwt_token)
     new_jwt_token_valid = is_jwt_token_valid(new_jwt_token["token"])
-    print("new_jwt_token_valid: ", new_jwt_token_valid)
 
     if new_jwt_token_valid:
         new_jwt_access_token = new_jwt_token["token"]
@@ -135,13 +133,10 @@ if __name__ == "__main__":
         jwt_access_token_response = requests.post(jwt_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "JWT_TOKEN", "secret": new_jwt_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
         jwt_refresh_token_response = requests.post(jwt_refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "JWT_REFRESH_TOKEN", "secret": new_jwt_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
-        print("jwt_access_token_response.status_code: ", jwt_access_token_response.status_code)
-        print("jwt_refresh_token_response.status_code: ", jwt_refresh_token_response.status_code)
         if jwt_access_token_response.status_code == 200 and jwt_refresh_token_response.status_code == 200:
             print("JWT Token 업데이트 성공")
         else:
             print("JWT Token 업데이트 실패")
-
 
 
     # ======================= kakao token =======================
@@ -163,13 +158,10 @@ if __name__ == "__main__":
         # POST 요청
         kakao_access_token_response = requests.post(kakao_access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "KAKAO_ACCESS_TOKEN", "secret": new_kakao_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
-        print("kakao_access_token_response.status_code: ", kakao_access_token_response.status_code)
         if kakao_access_token_response.status_code == 200:
             print("Kakao Token 업데이트 성공")
         else:
             print("Kakao Token 업데이트 실패")
-
-
 
 
     # ======================= naver token =======================
@@ -194,8 +186,6 @@ if __name__ == "__main__":
         naver_access_token_response = requests.post(naver_access_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "NAVER_ACCESS_TOKEN", "secret": new_naver_access_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
         naver_refresh_token_response = requests.post(naver_refresh_token_url, headers=headers, auth=auth, data=json.dumps({"credentials": {"scope": "GLOBAL", "id": "NAVER_REFRESH_TOKEN", "secret": new_naver_refresh_token, "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"}}))
 
-        print("naver_access_token_response.status_code: ", naver_access_token_response.status_code)
-        print("naver_refresh_token_response.status_code: ", naver_refresh_token_response.status_code)
         if naver_access_token_response.status_code == 200 and naver_refresh_token_response.status_code == 200:
             print("Naver Token 업데이트 성공")
         else:

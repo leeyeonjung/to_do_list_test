@@ -81,7 +81,7 @@ pipeline {
                                 export NAVER_ACCESS_TOKEN
                                 export NAVER_REFRESH_TOKEN
 
-                                ${PYTHON} -m pytest --disable-warnings --maxfail=1 || true
+                                ${PYTHON} -m pytest --disable-warnings --maxfail=1
                             '''
                         }
                     }

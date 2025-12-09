@@ -7,10 +7,10 @@ import os
 from requests.auth import HTTPBasicAuth
 import json
 import requests
-import src.utils.env_loader as env_loader
+from ..src.utils.env_loader import load_env_files
 
 # .env 파일 로드
-env_loader.load_env_files()
+load_env_files()
 
 log = logging.getLogger(__name__)
 

@@ -114,7 +114,9 @@ if __name__ == "__main__":
 
     # ======================= jwt token =======================
     new_jwt_token = get_new_jwt_token()
+    print("new_jwt_token: ", new_jwt_token)
     new_jwt_token_valid = is_jwt_token_valid(new_jwt_token["token"])
+    print("new_jwt_token_valid: ", new_jwt_token_valid)
 
     if new_jwt_token_valid:
         new_jwt_token = new_jwt_token["token"]

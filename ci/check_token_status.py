@@ -7,7 +7,15 @@ import os
 from requests.auth import HTTPBasicAuth
 import json
 import requests
-from ..src.utils.env_loader import load_env_files
+
+
+import sys
+from pathlib import Path
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+
+from src.utils.env_loader import load_env_files
 
 # .env 파일 로드
 load_env_files()

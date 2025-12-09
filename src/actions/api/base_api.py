@@ -38,7 +38,7 @@ class BaseAPI:
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def post(self, endpoint, payload=None):
+    def post(self, endpoint, payload=None, **kwargs):
         """
         POST 요청 전송.
 
@@ -51,12 +51,14 @@ class BaseAPI:
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         log.info(f"POST {url}")
-        log.debug(f"Request data: {payload}")
-        response = self.session.post(url, json=payload)
+        # payload 인자 또는 json 키워드 인자를 모두 허용한다.
+        json_payload = kwargs.pop("json", payload)
+        log.debug(f"Request data: {json_payload}")
+        response = self.session.post(url, json=json_payload, **kwargs)
         log.info(f"Response status: {response.status_code}")
         return response
 
-    def put(self, endpoint, payload=None):
+    def put(self, endpoint, payload=None, **kwargs):
         """
         PUT 요청 전송.
 
@@ -69,8 +71,9 @@ class BaseAPI:
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         log.info(f"PUT {url}")
-        log.debug(f"Request data: {payload}")
-        response = self.session.put(url, json=payload)
+        json_payload = kwargs.pop("json", payload)
+        log.debug(f"Request data: {json_payload}")
+        response = self.session.put(url, json=json_payload, **kwargs)
         log.info(f"Response status: {response.status_code}")
         return response
 

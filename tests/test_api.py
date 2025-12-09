@@ -48,7 +48,7 @@ def test_update_todo():
     api_client = BaseAPI(URL)
     # 할일 생성
     todo_data = {"title": "Original Todo", "completed": False}
-    create_response = api_client.post("/api/todos", json=todo_data)
+    create_response = api_client.post("/api/todos", payload=todo_data)
     check.is_in(create_response.status_code, [200, 201])
     todo_id = create_response.json().get("id")
 
@@ -64,7 +64,7 @@ def test_delete_todo():
     api_client = BaseAPI(URL)
     # 할일 생성
     todo_data = {"title": "Todo to Delete", "completed": False}
-    create_response = api_client.post("/api/todos", json=todo_data)
+    create_response = api_client.post("/api/todos", payload=todo_data)
     check.is_in(create_response.status_code, [200, 201])
     todo_id = create_response.json().get("id")
 

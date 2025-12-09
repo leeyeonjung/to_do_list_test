@@ -5,101 +5,16 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-import requests
 from playwright.sync_api import sync_playwright
 
-from src.actions.web.auth_actions import AuthActions
-from src.actions.web.todo_actions import TodoActions
 from src.utils.env_loader import load_env_files
+from src.utils.jwt import setup_page_with_token
+from src.utils.health_check import check_health
 
 log = logging.getLogger(__name__)
 
 # .env 파일 로드 (공통 모듈 사용)
 load_env_files()
-
-# Utility Functions
-def get_timestamp():
-    """
-    현재 시간을 타임스탬프 형식으로 반환
-
-    Returns:
-        str: YYYY-MM-DD_HH-MM-SS 형식의 타임스탬프 문자열
-    """
-    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-
-def get_result_base_dir():
-    """
-    실행 시간 기준 Result 디렉토리 경로 반환
-
-    실행 시간을 기준으로 Result/{timestamp} 디렉토리를 생성하고 반환
-    리포트와 비디오 파일이 이 디렉토리 하위에 저장됨
-
-    Returns:
-        Path: Result/{timestamp} 디렉토리 경로
-    """
-    timestamp = get_timestamp()
-    result_dir = Path(__file__).resolve().parents[0] / "Result" / timestamp
-    result_dir.mkdir(parents=True, exist_ok=True)
-    return result_dir
-
-
-# Health Check (전체 테스트 시작 전 서버 상태 확인)
-def _check_backend_health():
-    """
-    백엔드 Health Check: GET {BACKEND_BASE_URL}/health
-    기대 응답: 200, JSON { status: "ok", message: "Server is running" }
-    """
-    base_url = os.getenv("BACKEND_BASE_URL")
-    if not base_url:
-        log.error("[HEALTH] BACKEND_BASE_URL이 .env에 설정되어 있지 않습니다.")
-        return False
-    url = f"{base_url.rstrip('/')}/health"
-
-    log.info(f"[HEALTH] 백엔드 헬스 체크 요청: {url}")
-    resp = requests.get(url, timeout=3)
-
-    if resp.status_code != 200:
-        log.error(f"[HEALTH] 백엔드 상태 코드 비정상: {resp.status_code}")
-        return False
-
-    data = resp.json()
-
-    status_ok = data.get("status") == "ok" and data.get("message") == "Server is running"
-    if not status_ok:
-        log.error(f"[HEALTH] 백엔드 응답 값 비정상: {data}")
-        return False
-
-    log.info("[HEALTH] 백엔드 서버 정상 동작 중")
-    return True
-
-
-def _check_frontend_health():
-    """
-    프론트엔드 Health Check: GET {WEB_BASE_URL}/health
-    기대 응답: 200, text/plain, body: "healthy"
-    """
-    base_url = os.getenv("WEB_BASE_URL")
-    if not base_url:
-        log.error("[HEALTH] WEB_BASE_URL이 .env에 설정되어 있지 않습니다.")
-        return False
-    url = f"{base_url.rstrip('/')}/health"
-
-    log.info(f"[HEALTH] 프론트엔드 헬스 체크 요청: {url}")
-    resp = requests.get(url, timeout=3)
-
-    if resp.status_code != 200:
-        log.error(f"[HEALTH] 프론트엔드 상태 코드 비정상: {resp.status_code}")
-        return False
-
-    body = resp.text.strip()
-    if body != "healthy":
-        log.error(f"[HEALTH] 프론트엔드 응답 바디 비정상: {body!r}")
-        return False
-
-    log.info("[HEALTH] 프론트엔드 서버 정상 동작 중")
-    return True
-
 
 def pytest_sessionstart(session):
     """
@@ -108,8 +23,8 @@ def pytest_sessionstart(session):
     """
     log.info("[HEALTH] 테스트 실행 전 서버 상태 점검 시작")
 
-    backend_ok = _check_backend_health()
-    frontend_ok = _check_frontend_health()
+    backend_ok = check_health(os.getenv("BACKEND_BASE_URL"), expect_json=True)
+    frontend_ok = check_health(os.getenv("WEB_BASE_URL"), expect_json=False)
 
     if not (backend_ok and frontend_ok):
         msg = "[HEALTH] 서버 헬스 체크 실패로 테스트를 중단합니다."
@@ -119,36 +34,6 @@ def pytest_sessionstart(session):
     log.info("[HEALTH] 서버 헬스 체크 통과.")
     
     log.info("[HEALTH] 테스트를 계속 진행합니다.")
-
-
-def _setup_page_with_token(context, page, jwt_token):
-    """
-    페이지에 JWT 토큰을 설정하는 헬퍼 함수
-    
-    Args:
-        context: Playwright 브라우저 컨텍스트
-        page: Playwright 페이지 인스턴스
-        jwt_token: JWT 토큰 문자열
-        login_mode_name: 로그인 모드 이름 (로그용, 기본값: "")
-    """
-    # localStorage에 JWT 토큰 주입
-    context.add_init_script(
-        f'window.localStorage.setItem("token", "{jwt_token}");'
-    )
-    log.info("JWT 토큰이 localStorage에 주입됨")
-    
-    # 모든 API 요청에 Authorization 헤더 추가
-    def handle_route(route):
-        headers = route.request.headers.copy()
-        headers["Authorization"] = f"Bearer {jwt_token}"
-        route.continue_(headers=headers)
-    
-    web_base_url = os.getenv("WEB_BASE_URL", "")
-    page.route("**/api/**", handle_route)
-    page.route("**/auth/**", handle_route)
-    if web_base_url:
-        page.route(f"{web_base_url}/**", handle_route)
-    log.info("JWT 토큰이 네트워크 요청에 자동 추가됨")
 
 
 @pytest.fixture(scope="function")
@@ -176,33 +61,11 @@ def web_page():
         # 기본 모드: JWT를 localStorage/Authorization 헤더에 주입
         jwt_token = os.getenv("JWT_TOKEN")
         page = context.new_page()
-        _setup_page_with_token(context, page, jwt_token)
+        setup_page_with_token(context, page, jwt_token)
 
         yield page
         context.close()
         browser.close()
-
-
-@pytest.fixture
-def todo_page(web_page):
-    """
-    할일 페이지 액션 생성 (JWT로 이미 로그인된 상태를 전제)
-
-    JWT 토큰을 사용하여 로그인 설정을 수행하고 TodoActions 인스턴스를 반환
-    웹 테스트에서 할일 관련 기능을 테스트할 때 사용
-
-    Args:
-        web_page: Playwright 페이지 fixture
-        web_base_url: 웹 기본 URL fixture
-
-    Returns:
-        TodoActions: 할일 페이지 액션 인스턴스
-    """
-    # JWT 토큰을 사용한 로그인 설정
-    auth = AuthActions(web_page)
-    auth.setup_jwt_login()
-
-    return TodoActions(web_page)
 
 
 # Pytest Configuration Hooks
@@ -217,8 +80,9 @@ def pytest_configure(config):
         config: pytest 설정 객체
     """
     if not getattr(config.option, "htmlpath", None):
-        result_base_dir = get_result_base_dir()
-        timestamp = get_timestamp()
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        result_base_dir = Path(__file__).resolve().parents[0] / "Result" / timestamp
+        result_base_dir.mkdir(parents=True, exist_ok=True)
         report_path = result_base_dir / f"report_{timestamp}.html"
 
         config.option.htmlpath = str(report_path)

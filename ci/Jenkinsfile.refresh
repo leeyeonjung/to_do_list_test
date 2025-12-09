@@ -90,11 +90,7 @@ pipeline {
                                 export JENKINS_USER
                                 export JENKINS_PASS
 
-                                # 가상환경의 Python 경로 전달
-                                export PYTHON="${VENV_PATH}/bin/python"
-                                export VENV_PATH="${VENV_PATH}"
-
-                                bash ci/check_token_status.py
+                                $PYTHON ci/check_token_status.py
                             '''
                         }
 

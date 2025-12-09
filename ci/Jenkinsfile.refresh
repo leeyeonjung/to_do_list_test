@@ -7,8 +7,6 @@ pipeline {
         VENV_PATH     = "${env.WORKSPACE}/venv"
         PYTHON        = "${env.WORKSPACE}/venv/bin/python"
         PIP           = "${env.WORKSPACE}/venv/bin/pip"
-
-        JENKINS_URL = "http://3.36.219.242:8080"
     }
 
     stages {
@@ -97,7 +95,7 @@ pipeline {
                                 export PYTHON="${VENV_PATH}/bin/python"
                                 export VENV_PATH="${VENV_PATH}"
 
-                                bash ci/token_manager.sh
+                                bash ci/check_token_status.py
                             '''
                         }
 

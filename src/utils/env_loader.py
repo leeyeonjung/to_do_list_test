@@ -7,7 +7,6 @@
 """
 import os
 import logging
-import re
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -28,7 +27,7 @@ def get_project_root() -> Path:
     return current_file.parent.parent.parent
 
 
-def load_env_files() -> Optional[Path]:
+def load_env_files():
     """
     환경 변수 파일을 순서대로 로드합니다.
     
@@ -67,65 +66,3 @@ def load_env_files() -> Optional[Path]:
     
     log.warning("환경 변수 파일을 찾을 수 없습니다. (ENV_FILE 또는 .env)")
     return None
-
-
-def get_env_path() -> Optional[Path]:
-    """
-    환경 변수 파일 경로를 우선순위에 따라 반환합니다.
-    
-    파일 쓰기 등의 용도로 사용할 때는 우선순위에 따라 하나의 파일 경로만 반환합니다.
-    읽기용으로는 load_env_files()를 통해 환경 변수가 로드되어 있습니다.
-    
-    우선순위:
-    1. ENV_FILE 환경 변수 (Jenkins credential을 통해 주입)
-    2. 프로젝트 루트의 /.env 파일 (로컬 환경)
-    
-    Returns:
-        Optional[Path]: 환경 변수 파일 경로, 없으면 None
-    """
-    # 1. ENV_FILE 환경 변수 확인 (Jenkins credential 우선)
-    env_file_path = os.getenv("ENV_FILE")
-    if env_file_path:
-        env_file = Path(env_file_path)
-        if env_file.exists():
-            return env_file
-    
-    # 2. 로컬 환경: 프로젝트 루트의 .env 파일
-    project_root = get_project_root()
-    local_env = project_root / ".env"
-    if local_env.exists():
-        return local_env
-    
-    return None
-
-
-def upsert_env_value(env_path: Path, key: str, value: str) -> None:
-    """
-    env 파일에 key=value를 업데이트하거나 추가합니다.
-    
-    Args:
-        env_path: 환경 변수 파일 경로
-        key: 환경 변수 키
-        value: 환경 변수 값
-    """
-    if not env_path or not env_path.exists():
-        log.error(f".env 파일 없음: {env_path}")
-        return
-
-    with open(env_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    pattern = rf"^{re.escape(key)}=.*$"
-    replacement = f"{key}={value}"
-
-    if re.search(pattern, content, flags=re.MULTILINE):
-        content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
-    else:
-        content += f"\n{replacement}\n"
-
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
-# 모듈 로드 시 자동으로 환경 변수 파일 로드
-_loaded_env_path = load_env_files()

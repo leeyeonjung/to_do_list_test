@@ -10,18 +10,16 @@ log = logging.getLogger(__name__)
 class AuthActions:
     """인증/로그인 페이지 액션"""
 
-    def __init__(self, page, timeout=10000):
+    def __init__(self, page):
         """
         AuthActions 초기화.
 
         Args:
             page: Playwright Page 인스턴스
-            timeout: 기본 타임아웃 (밀리초)
         """
-        self.base_page = BasePage(page, timeout)
+        self.base_page = BasePage(page)
         self.locators = auth_locators
         self.page = page
-        self.timeout = timeout
 
 
     def verify_logged_in(self):
@@ -45,7 +43,7 @@ class AuthActions:
         로그아웃 수행.
         """
         # 사용자 메뉴 클릭 (필요한 경우)
-        if self.base_page.is_visible(self.locators.USER_MENU, timeout=5000):
+        if self.base_page.is_visible(self.locators.USER_MENU):
             self.base_page.click(self.locators.USER_MENU)
 
         # 로그아웃 버튼 클릭
@@ -75,8 +73,8 @@ class AuthActions:
         log.info("프론트엔드가 /auth/me를 호출하여 인증 확인 대기 중...")
 
         # 프론트엔드가 API 호출을 완료하고 메인 페이지로 전환될 때까지 대기
-        # 메인 페이지가 보일 때까지 대기 (최대 self.timeout 동안)
-        for _ in range(self.timeout // 200):  # 200ms 간격으로 체크
+        # 메인 페이지가 보일 때까지 대기
+        for _ in range(50):  # 200ms 간격으로 최대 10초
             # 메인 페이지가 보이는지 확인
             main_count = self.page.locator(self.locators.PAGE_MAIN).count()
             login_count = self.page.locator(self.locators.PAGE_LOGIN).count()
@@ -89,5 +87,5 @@ class AuthActions:
 
         # 타임아웃 전에 메인 페이지가 나타나지 않으면 강제로 확인
         log.info("메인 페이지 표시 대기 중...")
-        self.base_page.is_visible(self.locators.PAGE_MAIN, timeout=self.timeout)
+        self.base_page.is_visible(self.locators.PAGE_MAIN)
         log.info("✅ 메인 페이지 표시 확인됨. 로그인 성공!")

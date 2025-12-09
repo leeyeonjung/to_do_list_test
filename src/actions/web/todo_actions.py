@@ -5,22 +5,23 @@ import logging
 
 log = logging.getLogger(__name__)
 
+WAIT_STEPS = 100  # 100 * 100ms = 10초
+WAIT_INTERVAL_MS = 100
+
 
 class TodoActions:
     """할일 페이지 액션"""
 
-    def __init__(self, page, timeout=10000):
+    def __init__(self, page):
         """
         TodoActions 초기화.
 
         Args:
             page: Playwright Page 인스턴스
-            timeout: 기본 타임아웃 (밀리초)
         """
-        self.base_page = BasePage(page, timeout)
+        self.base_page = BasePage(page)
         self.locators = todo_locators
         self.page = page
-        self.timeout = timeout
 
     def add_todo(self, title):
         """
@@ -65,9 +66,9 @@ class TodoActions:
         삭제 버튼 클릭 (내부 메서드).
         """
         delete_button = self.page.locator(self.locators.DELETE_BUTTON_FIRST)
-        delete_button.wait_for(state="visible", timeout=self.timeout)
+        delete_button.wait_for(state="visible")
         log.info(f"삭제 버튼 발견: {self.locators.DELETE_BUTTON_FIRST}")
-        delete_button.click(timeout=self.timeout)
+        delete_button.click()
         log.info("삭제 버튼 클릭 완료")
 
     def delete_todo(self):
@@ -94,18 +95,18 @@ class TodoActions:
         todo_items = self.page.locator(self.locators.TODO_ITEM)
 
         # 네트워크 요청 완료 대기
-        self.page.wait_for_load_state("networkidle", timeout=self.timeout)
+        self.page.wait_for_load_state("networkidle")
 
         # 개수가 줄어들 때까지 대기
-        for _ in range(self.timeout // 100):
+        for _ in range(WAIT_STEPS):
             current_count = todo_items.count()
             if current_count == expected_count:
-                self.page.wait_for_load_state("domcontentloaded", timeout=1000)
+                self.page.wait_for_load_state("domcontentloaded")
                 final_count = todo_items.count()
                 if final_count == expected_count:
                     log.info("Deleted todo")
                     return
-            self.page.wait_for_timeout(100)
+            self.page.wait_for_timeout(WAIT_INTERVAL_MS)
 
         # 타임아웃 후에도 개수가 줄어들지 않으면 경고
         final_count = todo_items.count()
@@ -142,12 +143,12 @@ class TodoActions:
         todo_items = self.page.locator(self.locators.TODO_ITEM)
 
         # DOM이 안정화될 때까지 대기
-        self.page.wait_for_load_state("domcontentloaded", timeout=self.timeout)
+        self.page.wait_for_load_state("domcontentloaded")
 
         # todo-item이 있으면 첫 번째 항목이 visible할 때까지 대기
         count = todo_items.count()
         if count > 0:
-            todo_items.first.wait_for(state="visible", timeout=self.timeout)
+            todo_items.first.wait_for(state="visible")
 
         log.debug(f"Todo count: {count}")
         return count

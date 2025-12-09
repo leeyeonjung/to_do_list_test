@@ -7,16 +7,14 @@ log = logging.getLogger(__name__)
 class BasePage:
     """웹 페이지 객체의 기본 클래스"""
 
-    def __init__(self, page, timeout=10000):
+    def __init__(self, page):
         """
         BasePage 초기화.
 
         Args:
             page: Playwright Page 인스턴스
-            timeout: 기본 타임아웃 (밀리초)
         """
         self.page = page
-        self.timeout = timeout
 
     def find_element(self, selector):
         """
@@ -29,7 +27,7 @@ class BasePage:
             Locator 객체
         """
         element = self.page.locator(selector).first
-        element.wait_for(state="visible", timeout=self.timeout)
+        element.wait_for(state="visible")
         log.debug(f"Element found: {selector}")
         return element
 
@@ -62,20 +60,17 @@ class BasePage:
 
         Args:
             selector: CSS 선택자 또는 XPath
-            timeout: 대기 시간 (밀리초, None이면 self.timeout 사용)
 
         Returns:
             요소가 보이면 True, 그렇지 않으면 False
         """
-        effective_timeout = timeout if timeout is not None else self.timeout
         element = self.page.locator(selector).first
         
         # 요소가 보이는지 확인
         if element.count() == 0:
             return False
         
-        # 타임아웃 동안 요소가 visible 상태가 될 때까지 대기
-        element.wait_for(state="visible", timeout=effective_timeout)
+        element.wait_for(state="visible")
         return True
 
     def navigate(self, url):

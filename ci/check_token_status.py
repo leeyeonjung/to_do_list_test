@@ -49,7 +49,7 @@ def get_new_kakao_token():
     url = "https://kauth.kakao.com/oauth/token"  # 카카오 토큰 갱신 URL
     data = {
         'grant_type': 'refresh_token',
-        'client_id': os.getenv("KAKAO_CLIENT_ID"),  # 카카오 개발자 콘솔에서 발급받은 client_id
+        'client_id': os.getenv("KAKAO_REST_API_KEY"),  # 카카오 개발자 콘솔에서 발급받은 client_id
         'refresh_token': os.getenv("KAKAO_REFRESH_TOKEN")  # 기존의 refresh_token
     }
 

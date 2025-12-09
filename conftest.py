@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 # .env 파일 로드 (공통 모듈 사용)
 load_env_files()
 
-def pytest_sessionstart(session):
+def pytest_sessionstart():
     """
     pytest 세션 시작 시 가장 먼저 호출되어
     백엔드/프론트엔드 헬스 체크를 수행

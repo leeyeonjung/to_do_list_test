@@ -145,10 +145,13 @@ if __name__ == "__main__":
         jwt_access_token_response = post_token_to_jenkins("JWT_TOKEN", new_jwt_token["token"])
         jwt_refresh_token_response = post_token_to_jenkins("JWT_REFRESH_TOKEN", new_jwt_token["refreshToken"])
 
+        print(f"[DEBUG] JWT_TOKEN API Status: {jwt_access_token_response.status_code}")
+        print(f"[DEBUG] JWT_REFRESH_TOKEN API Status: {jwt_refresh_token_response.status_code}")
+        
         if jwt_access_token_response.status_code == 200 and jwt_refresh_token_response.status_code == 200:
-            print("JWT Token 업데이트 성공")
+            print("✅ JWT Token 업데이트 성공")
         else:
-            print("JWT Token 업데이트 실패")
+            print(f"❌ JWT Token 업데이트 실패 - JWT: {jwt_access_token_response.status_code}, Refresh: {jwt_refresh_token_response.status_code}")
 
 
     # ======================= kakao token =======================
@@ -169,10 +172,13 @@ if __name__ == "__main__":
             # POST 요청
             kakao_access_token_response = post_token_to_jenkins("KAKAO_ACCESS_TOKEN", new_kakao_token["access_token"])
 
+            print(f"[DEBUG] Jenkins API Response Status: {kakao_access_token_response.status_code}")
+            print(f"[DEBUG] Jenkins API Response Body: {kakao_access_token_response.text[:200]}")
+            
             if kakao_access_token_response.status_code == 200:
-                print("Kakao Token 업데이트 성공")
+                print("✅ Kakao Token 업데이트 성공")
             else:
-                print(f"Kakao Token 업데이트 실패 - Status: {kakao_access_token_response.status_code}")
+                print(f"❌ Kakao Token 업데이트 실패 - Status: {kakao_access_token_response.status_code}")
         else:
             print("❌ 새로운 Kakao Token이 유효하지 않습니다.")
 
@@ -187,7 +193,10 @@ if __name__ == "__main__":
         naver_access_token_response = post_token_to_jenkins("NAVER_ACCESS_TOKEN", new_naver_token["access_token"])
         naver_refresh_token_response = post_token_to_jenkins("NAVER_REFRESH_TOKEN", new_naver_token["refresh_token"])
 
+        print(f"[DEBUG] NAVER_ACCESS_TOKEN API Status: {naver_access_token_response.status_code}")
+        print(f"[DEBUG] NAVER_REFRESH_TOKEN API Status: {naver_refresh_token_response.status_code}")
+        
         if naver_access_token_response.status_code == 200 and naver_refresh_token_response.status_code == 200:
-            print("Naver Token 업데이트 성공")
+            print("✅ Naver Token 업데이트 성공")
         else:
-            print("Naver Token 업데이트 실패")
+            print(f"❌ Naver Token 업데이트 실패 - Access: {naver_access_token_response.status_code}, Refresh: {naver_refresh_token_response.status_code}")

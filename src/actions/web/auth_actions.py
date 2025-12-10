@@ -1,8 +1,9 @@
 """웹 테스트용 인증 액션"""
-from src.locators.web import auth_locators
-from src.actions.web.base_page import BasePage
 import logging
 import os
+
+from src.actions.web.base_page import BasePage
+from src.locators.web import auth_locators
 
 log = logging.getLogger(__name__)
 

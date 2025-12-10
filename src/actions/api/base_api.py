@@ -1,6 +1,7 @@
 """requests를 사용한 API 테스트용 기본 API 클래스"""
-import requests
 import logging
+
+import requests
 
 log = logging.getLogger(__name__)
 

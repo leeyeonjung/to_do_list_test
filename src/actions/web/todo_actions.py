@@ -1,7 +1,8 @@
 """웹 테스트용 할일 액션"""
-from src.locators.web import todo_locators
-from src.actions.web.base_page import BasePage
 import logging
+
+from src.actions.web.base_page import BasePage
+from src.locators.web import todo_locators
 
 log = logging.getLogger(__name__)
 

@@ -1,6 +1,8 @@
 """소셜 로그인(Kakao / Naver) 테스트"""
 import os
+
 import pytest_check as check
+
 from src.actions.api.base_api import LoginAPI
 
 BASE_URL = os.getenv("BACKEND_BASE_URL")

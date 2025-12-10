@@ -5,9 +5,10 @@
 - Jenkins 환경: ENV_FILE 환경 변수 (Jenkins credential)만 사용
 - 로컬 환경: 프로젝트 루트의 .env 파일만 사용
 """
-import os
 import logging
+import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 log = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 """JWT 토큰 주입 및 네트워크 헤더 설정 헬퍼"""
-import os
 import logging
+import os
 
 log = logging.getLogger(__name__)
 

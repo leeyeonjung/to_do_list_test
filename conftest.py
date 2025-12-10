@@ -1,7 +1,7 @@
 """pytest 설정 및 fixture 정의"""
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -13,8 +13,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.utils.env_loader import load_env_files
-from src.utils.jwt import setup_page_with_token
 from src.utils.health_check import check_health
+from src.utils.jwt import setup_page_with_token
 
 log = logging.getLogger(__name__)
 

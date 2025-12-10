@@ -11,12 +11,18 @@ pipeline {
 
     stages {
 
+        /* ---------------------------------------------------------------
+           1. Checkout
+        ---------------------------------------------------------------- */
         stage('Checkout') {
             steps { 
                 checkout scm 
             }
         }
 
+        /* ---------------------------------------------------------------
+           2. Setup Python Environment
+        ---------------------------------------------------------------- */
         stage('Setup Python Environment') {
             steps {
                 script {
@@ -39,6 +45,9 @@ pipeline {
             }
         }
 
+        /* ---------------------------------------------------------------
+           3. Refresh Tokens
+        ---------------------------------------------------------------- */
         stage('Refresh Tokens via Token Manager') {
             steps {
                 script {
@@ -102,9 +111,6 @@ pipeline {
                                     | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
 
-                                echo "[DEBUG] ⭐ BACKEND_BASE_URL=$BACKEND_BASE_URL"
-                                echo "[DEBUG] ⭐ WEB_BASE_URL=$WEB_BASE_URL"
-
                                 export JWT_TOKEN
                                 export JWT_REFRESH_TOKEN
                                 export KAKAO_ACCESS_TOKEN
@@ -115,9 +121,6 @@ pipeline {
                                 export JENKINS_USER
                                 export JENKINS_PASS
 
-
-                                cd ${WORKSPACE_DIR}
-                                echo "Current workspace path: ${WORKSPACE_DIR}"
                                 $PYTHON ./ci/check_token_status.py
                             '''
                         }

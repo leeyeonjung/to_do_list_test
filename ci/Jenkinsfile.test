@@ -61,13 +61,7 @@ pipeline {
                             string(credentialsId: 'KAKAO_ACCESS_TOKEN', variable: 'KAKAO_ACCESS_TOKEN'),
                             string(credentialsId: 'KAKAO_REFRESH_TOKEN', variable: 'KAKAO_REFRESH_TOKEN'),
                             string(credentialsId: 'NAVER_ACCESS_TOKEN', variable: 'NAVER_ACCESS_TOKEN'),
-                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN'),
-
-                            usernamePassword(
-                                credentialsId: 'jenkins-admin',
-                                usernameVariable: 'JENKINS_USER',
-                                passwordVariable: 'JENKINS_PASS'
-                            )
+                            string(credentialsId: 'NAVER_REFRESH_TOKEN', variable: 'NAVER_REFRESH_TOKEN')
                         ]) {
 
                             sh '''#!/bin/bash
@@ -86,9 +80,6 @@ pipeline {
                                         | sed 's/^"//;s/"$//' | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
 
-                                echo "[DEBUG] ⭐ BACKEND_BASE_URL=$BACKEND_BASE_URL"
-                                echo "[DEBUG] ⭐ WEB_BASE_URL=$WEB_BASE_URL"
-
                                 export JWT_TOKEN
                                 export JWT_REFRESH_TOKEN
                                 export KAKAO_ACCESS_TOKEN
@@ -96,17 +87,6 @@ pipeline {
                                 export NAVER_ACCESS_TOKEN
                                 export NAVER_REFRESH_TOKEN
 
-                                echo "[DEBUG] 📌 Loaded Tokens:"
-                                echo "[DEBUG]   JWT_TOKEN: ${JWT_TOKEN:0:20}..."
-                                echo "[DEBUG]   KAKAO_ACCESS_TOKEN: ${KAKAO_ACCESS_TOKEN:0:20}..."
-                                echo "[DEBUG]   NAVER_ACCESS_TOKEN: ${NAVER_ACCESS_TOKEN:0:20}..."
-
-                                export JENKINS_USER
-                                export JENKINS_PASS
-
-                                cd ${WORKSPACE_DIR}
-                                echo "Current workspace path: ${WORKSPACE_DIR}"
-                                
                                 $PYTHON -m pytest --disable-warnings --maxfail=1
                             '''
                         }

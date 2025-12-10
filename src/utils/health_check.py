@@ -7,13 +7,17 @@ log = logging.getLogger(__name__)
 
 def check_health(base_url, expect_json=False):
     """
-    공통 Health Check: GET {base_url}/health
-
-    expect_json이 True면 JSON {"status": "ok", "message": "Server is running"} 기대,
-    False면 text "healthy" 기대.
+    서버 헬스 체크
+    
+    Args:
+        base_url: 서버 기본 URL
+        expect_json: JSON 응답 기대 여부
+        
+    Returns:
+        bool: 헬스 체크 성공 여부
     """
     if not base_url:
-        log.error("[HEALTH] BASE_URL이 설정되지 않았습니다.")
+        log.error("[HEALTH] BASE_URL이 설정되지 않았습니다")
         return False
 
     url = f"{base_url.rstrip('/')}/health"
@@ -26,7 +30,6 @@ def check_health(base_url, expect_json=False):
 
     if expect_json:
         data = resp.json()
-
         status_ok = data.get("status") == "ok" and data.get("message") == "Server is running"
         if not status_ok:
             log.error(f"[HEALTH] 응답 값 비정상: {data}")
@@ -39,4 +42,3 @@ def check_health(base_url, expect_json=False):
 
     log.info("[HEALTH] 서버 정상 동작 중")
     return True
-

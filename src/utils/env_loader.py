@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 def get_project_root():
     """
-    프로젝트 루트 디렉토리 경로를 반환합니다.
+    프로젝트 루트 디렉토리 경로 반환
     
     Returns:
         Path: 프로젝트 루트 디렉토리 경로
@@ -28,7 +28,7 @@ def get_project_root():
 
 def load_env_files():
     """
-    환경에 따라 적절한 환경 변수 파일을 로드합니다.
+    환경에 따라 적절한 환경 변수 파일 로드
     
     로드 규칙:
     1. ENV_FILE 환경 변수가 있으면 (Jenkins 환경)
@@ -37,7 +37,7 @@ def load_env_files():
        → 프로젝트 루트의 .env 파일 로드
     
     Returns:
-        Optional[Path]: 로드된 환경 변수 파일의 경로, 없으면 None
+        Optional[Path]: 로드된 환경 변수 파일 경로, 없으면 None
     """
     project_root = get_project_root()
     log.debug(f"프로젝트 루트 경로: {project_root}")
@@ -51,11 +51,9 @@ def load_env_files():
         if env_file.exists():
             load_dotenv(env_file, override=False)
             log.info(f"ENV_FILE 환경 변수에서 파일 로드 완료: {env_file}")
-            log.debug(f"ENV_FILE 로드 성공: {env_file}")
             env_loaded_path = env_file
         else:
             log.warning(f"ENV_FILE 환경 변수가 가리키는 파일이 존재하지 않습니다: {env_file_path}")
-            log.debug(f"ENV_FILE 파일 없음: {env_file_path}")
     else:
         log.debug("ENV_FILE 환경변수 없음")
     
@@ -74,11 +72,9 @@ def load_env_files():
     if local_env.exists():
         load_dotenv(local_env, override=False)
         log.info(f"로컬 .env 파일 로드 완료: {local_env}")
-        log.debug("로컬 .env 파일 로드 성공")
         log.debug(f"BACKEND_BASE_URL: {os.getenv('BACKEND_BASE_URL')}")
         log.debug(f"WEB_BASE_URL: {os.getenv('WEB_BASE_URL')}")
         return local_env
     
-    log.warning("환경 변수 파일을 찾을 수 없습니다. (ENV_FILE 또는 .env)")
-    log.debug("환경 변수 파일을 찾을 수 없습니다!")
+    log.warning("환경 변수 파일을 찾을 수 없습니다")
     return None

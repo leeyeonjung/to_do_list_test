@@ -1,9 +1,9 @@
 """
 환경 변수 로딩 유틸리티 모듈
 
-로컬 환경과 Jenkins 환경에서 .env 파일을 순서대로 로드합니다.
-1. ENV_FILE 환경 변수 (Jenkins credential을 통해 주입)
-2. 로컬 환경: 프로젝트 루트의 /.env 파일
+환경에 따라 적절한 .env 파일을 로드합니다.
+- Jenkins 환경: ENV_FILE 환경 변수 (Jenkins credential)만 사용
+- 로컬 환경: 프로젝트 루트의 .env 파일만 사용
 """
 import os
 import logging
@@ -28,54 +28,57 @@ def get_project_root():
 
 def load_env_files():
     """
-    환경 변수 파일을 순서대로 로드합니다.
+    환경에 따라 적절한 환경 변수 파일을 로드합니다.
     
-    우선순위:
-    1. ENV_FILE 환경 변수 (Jenkins credential을 통해 주입) - 최우선
-    2. 프로젝트 루트의 /.env 파일 (로컬 환경)
-    
-    ENV_FILE이 있으면 먼저 로드하고, 이어서 .env를 낮은 우선순위로 로드합니다.
+    로드 규칙:
+    1. ENV_FILE 환경 변수가 있으면 (Jenkins 환경)
+       → ENV_FILE만 로드하고 종료 (로컬 .env 무시)
+    2. ENV_FILE이 없으면 (로컬 개발 환경)
+       → 프로젝트 루트의 .env 파일 로드
     
     Returns:
         Optional[Path]: 로드된 환경 변수 파일의 경로, 없으면 None
     """
     project_root = get_project_root()
-    print(f"[DEBUG] 프로젝트 루트 경로: {project_root}")
+    log.debug(f"프로젝트 루트 경로: {project_root}")
     
-    # 1. ENV_FILE 환경 변수 확인 (Jenkins credential 우선)
+    # Jenkins 환경: ENV_FILE 로드
     env_file_path = os.getenv("ENV_FILE")
     env_loaded_path = None
     if env_file_path:
         env_file = Path(env_file_path)
-        print(f"[DEBUG] ENV_FILE 환경변수 감지: {env_file_path}")
+        log.debug(f"ENV_FILE 환경변수 감지: {env_file_path}")
         if env_file.exists():
             load_dotenv(env_file, override=False)
             log.info(f"ENV_FILE 환경 변수에서 파일 로드 완료: {env_file}")
-            print(f"[DEBUG] ENV_FILE 로드 성공: {env_file}")
+            log.debug(f"ENV_FILE 로드 성공: {env_file}")
             env_loaded_path = env_file
         else:
             log.warning(f"ENV_FILE 환경 변수가 가리키는 파일이 존재하지 않습니다: {env_file_path}")
-            print(f"[DEBUG] ENV_FILE 파일 없음: {env_file_path}")
+            log.debug(f"ENV_FILE 파일 없음: {env_file_path}")
     else:
-        print("[DEBUG] ENV_FILE 환경변수 없음")
+        log.debug("ENV_FILE 환경변수 없음")
     
-    # 2. 로컬 환경: 프로젝트 루트의 .env 파일 (후순위)
+    # ENV_FILE이 로드되었으면 로컬 .env 무시하고 종료
+    if env_loaded_path:
+        log.debug("ENV_FILE이 로드되었으므로 로컬 .env 파일 무시")
+        log.debug(f"BACKEND_BASE_URL: {os.getenv('BACKEND_BASE_URL')}")
+        log.debug(f"WEB_BASE_URL: {os.getenv('WEB_BASE_URL')}")
+        return env_loaded_path
+    
+    # 로컬 환경: .env 파일 로드
     local_env = project_root / ".env"
-    print(f"[DEBUG] 로컬 .env 파일 경로 확인 중: {local_env}")
-    print(f"[DEBUG] 파일 존재 여부: {local_env.exists()}")
+    log.debug(f"로컬 .env 파일 경로 확인 중: {local_env}")
+    log.debug(f"파일 존재 여부: {local_env.exists()}")
     
     if local_env.exists():
         load_dotenv(local_env, override=False)
         log.info(f"로컬 .env 파일 로드 완료: {local_env}")
-        print(f"[DEBUG] 로컬 .env 파일 로드 성공")
-        print(f"[DEBUG] BACKEND_BASE_URL: {os.getenv('BACKEND_BASE_URL')}")
-        print(f"[DEBUG] WEB_BASE_URL: {os.getenv('WEB_BASE_URL')}")
-        return env_loaded_path or local_env
-    
-    if env_loaded_path:
-        print(f"[DEBUG] ENV_FILE만 로드됨")
-        return env_loaded_path
+        log.debug("로컬 .env 파일 로드 성공")
+        log.debug(f"BACKEND_BASE_URL: {os.getenv('BACKEND_BASE_URL')}")
+        log.debug(f"WEB_BASE_URL: {os.getenv('WEB_BASE_URL')}")
+        return local_env
     
     log.warning("환경 변수 파일을 찾을 수 없습니다. (ENV_FILE 또는 .env)")
-    print("[DEBUG] 환경 변수 파일을 찾을 수 없습니다!")
+    log.debug("환경 변수 파일을 찾을 수 없습니다!")
     return None

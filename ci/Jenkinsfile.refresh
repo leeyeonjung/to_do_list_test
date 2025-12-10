@@ -84,6 +84,24 @@ pipeline {
                                     | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
 
+                                export KAKAO_REST_API_KEY="$(
+                                    grep -E '^KAKAO_REST_API_KEY=' "$ENV_FILE" | cut -d '=' -f2- \
+                                    | sed 's/^"//;s/"$//' \
+                                    | tr -d '\\r' | tr -d '\\n' | tr -d ' '
+                                )"
+
+                                export NAVER_CLIENT_ID="$(
+                                    grep -E '^NAVER_CLIENT_ID=' "$ENV_FILE" | cut -d '=' -f2- \
+                                    | sed 's/^"//;s/"$//' \
+                                    | tr -d '\\r' | tr -d '\\n' | tr -d ' '
+                                )"
+
+                                export NAVER_CLIENT_SECRET="$(
+                                    grep -E '^NAVER_CLIENT_SECRET=' "$ENV_FILE" | cut -d '=' -f2- \
+                                    | sed 's/^"//;s/"$//' \
+                                    | tr -d '\\r' | tr -d '\\n' | tr -d ' '
+                                )"
+
                                 echo "[DEBUG] ⭐ BACKEND_BASE_URL=$BACKEND_BASE_URL"
                                 echo "[DEBUG] ⭐ WEB_BASE_URL=$WEB_BASE_URL"
 

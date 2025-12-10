@@ -152,18 +152,29 @@ if __name__ == "__main__":
 
 
     # ======================= kakao token =======================
+    print(f"[DEBUG] KAKAO_REST_API_KEY 존재 여부: {os.getenv('KAKAO_REST_API_KEY') is not None}")
+    print(f"[DEBUG] KAKAO_REFRESH_TOKEN 존재 여부: {os.getenv('KAKAO_REFRESH_TOKEN') is not None}")
+    
     new_kakao_token = get_new_kakao_token()
-    new_kakao_token_valid = is_kakao_token_valid(new_kakao_token["access_token"])
+    
+    if new_kakao_token is None:
+        print("❌ Kakao Token 갱신 실패 - get_new_kakao_token()이 None을 반환했습니다.")
+        print(f"[DEBUG] 현재 KAKAO_ACCESS_TOKEN: {os.getenv('KAKAO_ACCESS_TOKEN')[:20]}..." if os.getenv('KAKAO_ACCESS_TOKEN') else "None")
+    else:
+        print(f"[DEBUG] 새로운 Kakao access_token: {new_kakao_token.get('access_token', 'N/A')[:20]}...")
+        new_kakao_token_valid = is_kakao_token_valid(new_kakao_token["access_token"])
 
-    if new_kakao_token_valid:
+        if new_kakao_token_valid:
 
-        # POST 요청
-        kakao_access_token_response = post_token_to_jenkins("KAKAO_ACCESS_TOKEN", new_kakao_token["access_token"])
+            # POST 요청
+            kakao_access_token_response = post_token_to_jenkins("KAKAO_ACCESS_TOKEN", new_kakao_token["access_token"])
 
-        if kakao_access_token_response.status_code == 200:
-            print("Kakao Token 업데이트 성공")
+            if kakao_access_token_response.status_code == 200:
+                print("Kakao Token 업데이트 성공")
+            else:
+                print(f"Kakao Token 업데이트 실패 - Status: {kakao_access_token_response.status_code}")
         else:
-            print("Kakao Token 업데이트 실패")
+            print("❌ 새로운 Kakao Token이 유효하지 않습니다.")
 
 
     # ======================= naver token =======================

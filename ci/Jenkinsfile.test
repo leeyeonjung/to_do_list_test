@@ -80,6 +80,9 @@ pipeline {
                                         | sed 's/^"//;s/"$//' | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
 
+                                echo "[DEBUG] ⭐ BACKEND_BASE_URL=$BACKEND_BASE_URL"
+                                echo "[DEBUG] ⭐ WEB_BASE_URL=$WEB_BASE_URL"
+
                                 export JWT_TOKEN
                                 export JWT_REFRESH_TOKEN
                                 export KAKAO_ACCESS_TOKEN

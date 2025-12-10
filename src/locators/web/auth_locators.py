@@ -10,6 +10,6 @@ PAGE_LOGIN = "#page-login"
 # UserProfile.js - 유저 프로필 섹션
 USER_PROFILE_SECTION = "#section-user-profile"
 
-# 로그인 후 확인용 요소 (인증 성공 시 노출되는 영역들)
-USER_MENU = USER_PROFILE_SECTION  # 프로필 섹션이 곧 사용자 메뉴 역할
+# 로그인 후 확인용 요소
+USER_MENU = USER_PROFILE_SECTION
 LOGOUT_BUTTON = "#btn-logout, .logout-button"

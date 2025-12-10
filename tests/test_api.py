@@ -31,13 +31,11 @@ def test_create_todo():
 def test_get_todo_by_id():
     """ID로 할일 조회 테스트"""
     api_client = BaseAPI(URL)
-    # 할일 생성
     todo_data = {"title": "Test Todo", "completed": False}
     create_response = api_client.post("/api/todos", todo_data)
     check.is_in(create_response.status_code, [200, 201])
     todo_id = create_response.json().get("id")
 
-    # ID로 조회
     response = api_client.get(f"/api/todos/{todo_id}")
     check.equal(response.status_code, 200)
     check.equal(response.json()["id"], todo_id)
@@ -46,13 +44,11 @@ def test_get_todo_by_id():
 def test_update_todo():
     """할일 수정 테스트"""
     api_client = BaseAPI(URL)
-    # 할일 생성
     todo_data = {"title": "Original Todo", "completed": False}
-    create_response = api_client.post("/api/todos", payload=todo_data)
+    create_response = api_client.post("/api/todos", todo_data)
     check.is_in(create_response.status_code, [200, 201])
     todo_id = create_response.json().get("id")
 
-    # 할일 수정
     update_data = {"title": "Updated Todo", "completed": True}
     response = api_client.put(f"/api/todos/{todo_id}", update_data)
     check.equal(response.status_code, 200)
@@ -62,16 +58,13 @@ def test_update_todo():
 def test_delete_todo():
     """할일 삭제 테스트"""
     api_client = BaseAPI(URL)
-    # 할일 생성
     todo_data = {"title": "Todo to Delete", "completed": False}
-    create_response = api_client.post("/api/todos", payload=todo_data)
+    create_response = api_client.post("/api/todos", todo_data)
     check.is_in(create_response.status_code, [200, 201])
     todo_id = create_response.json().get("id")
 
-    # 할일 삭제
     response = api_client.delete(f"/api/todos/{todo_id}")
     check.is_in(response.status_code, [200, 204])
 
-    # 삭제 확인
     get_response = api_client.get(f"/api/todos/{todo_id}")
     check.equal(get_response.status_code, 404)

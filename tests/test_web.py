@@ -55,16 +55,12 @@ def test_cancel_delete_todo(web_page):
 
 
 def test_logout_redirects_to_login(web_page):
-    """로그아웃 시 로그인 페이지(#page-login)로 돌아가는지 확인"""
+    """로그아웃 시 로그인 페이지로 리다이렉트 확인"""
     auth = AuthActions(web_page)
-
-    # JWT 토큰 기반 로그인 상태로 메인 페이지 진입 (conftest.py 설정 사용)
     auth.setup_jwt_login()
     check.is_true(auth.verify_logged_in())
 
-    # 로그아웃 수행
     auth.logout()
 
-    # 로그인 페이지(#page-login)가 보이는지 확인
     is_login_page = auth.base_page.is_visible(auth_locators.PAGE_LOGIN)
     check.is_true(is_login_page)

@@ -115,22 +115,23 @@ def post_token_to_jenkins(credential_id, token):
     Jenkins에 토큰을 POST 요청으로 업데이트하는 함수
     :param credential_id: 토큰의 ID (JWT_TOKEN, JWT_REFRESH_TOKEN 등)
     :param token: 토큰 값
-    :param user: Jenkins 사용자 이름
-    :param password: Jenkins 비밀번호
     :return: 요청의 응답 객체
     """
-    url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/{credential_id}"
-    headers = {"Content-Type": "application/json"}
+    # Jenkins Credential API는 config.xml 형식 사용
+    url = f"{jenkins_url}/credentials/store/system/domain/{credential_domain}/credential/{credential_id}/config.xml"
+    headers = {"Content-Type": "application/xml"}
     auth = HTTPBasicAuth(user, password)
-    data = json.dumps({
-        "credentials": {
-            "scope": "GLOBAL",
-            "id": credential_id,
-            "secret": token,
-            "$class": "org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl"
-        }
-    })
-    return requests.post(url, headers=headers, auth=auth, data=data)
+    
+    # XML 형식으로 credential 업데이트
+    xml_data = f"""<?xml version='1.1' encoding='UTF-8'?>
+<org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl plugin="plain-credentials@182.v468b_97b_9dcb_8">
+  <scope>GLOBAL</scope>
+  <id>{credential_id}</id>
+  <description></description>
+  <secret>{token}</secret>
+</org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>"""
+    
+    return requests.post(url, headers=headers, auth=auth, data=xml_data)
 
 
 if __name__ == "__main__":

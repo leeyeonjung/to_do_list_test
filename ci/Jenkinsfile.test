@@ -74,6 +74,12 @@ pipeline {
                                         | sed 's/^"//;s/"$//' | tr -d '\\r' | tr -d '\\n' | tr -d ' '
                                 )"
 
+                                export WEB_BASE_URL="$(
+                                    grep -E '^WEB_BASE_URL=' "$ENV_FILE" \
+                                        | cut -d '=' -f2- \
+                                        | sed 's/^"//;s/"$//' | tr -d '\\r' | tr -d '\\n' | tr -d ' '
+                                )"
+
                                 export JWT_TOKEN
                                 export JWT_REFRESH_TOKEN
                                 export KAKAO_ACCESS_TOKEN

@@ -15,6 +15,10 @@ todolist_test/
 │   ├── Jenkinsfile.test    # 테스트 실행 파이프라인
 │   ├── Jenkinsfile.refresh # 토큰 갱신 파이프라인
 │   └── check_token_status.py
+├── postman/
+│   ├── README.md           # Postman 사용 가이드
+│   ├── todolist_postman_collection.json
+│   └── todolist_postman_environment.json
 ├── src/
 │   ├── actions/            # 액션 클래스 (POM 패턴)
 │   │   ├── api/
@@ -213,3 +217,26 @@ flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
 - Web 테스트는 Playwright 브라우저가 필요합니다 (`playwright install chromium`)
 - API 테스트는 실제 서버가 실행 중이어야 합니다
 - 토큰 자동 갱신은 `Jenkinsfile.refresh`에서만 수행됩니다
+
+
+
+## 📮 Postman API 테스트
+
+GUI 환경에서 API를 수동으로 테스트하고 싶다면 Postman Collection을 사용하세요.
+
+**📂 위치**: `postman/` 폴더  
+**📖 상세 가이드**: [postman/README.md](postman/README.md)
+
+### 포함된 기능
+- 🏥 Health Check (Backend/Web)
+- 🔑 Token Management (자동 갱신 및 저장)
+- 🔐 Social Login (Kakao/Naver)
+- 📝 Todo CRUD (전체 시나리오)
+
+### 빠른 시작
+1. Postman에서 `postman/todolist_postman_collection.json` Import
+2. `postman/todolist_postman_environment.json` Import
+3. Environment 활성화 후 변수 값 설정
+4. API 테스트 실행
+
+자세한 사용법은 [Postman 가이드](postman/README.md)를 참고하세요.

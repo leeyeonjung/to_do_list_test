@@ -23,14 +23,14 @@ todolist_test/
 │   │       ├── auth_actions.py
 │   │       ├── base_page.py
 │   │       └── todo_actions.py
-│   ├── locators/
+│   ├── locators/           # 페이지 요소 선택자
 │   │   └── web/
 │   │       ├── auth_locators.py
 │   │       └── todo_locators.py
-│   └── utils/
-│       ├── env_loader.py   # 환경 변수 로딩 유틸리티
-│       ├── health_check.py # 백/프론트 헬스 체크 유틸
-│       └── jwt.py          # Playwright JWT 주입/헤더 설정
+│   └── utils/              # 공통 유틸리티
+│       ├── env_loader.py   # 환경 변수 로딩
+│       ├── health_check.py # 서버 헬스 체크
+│       └── jwt.py          # JWT 토큰 주입
 ├── tests/
 │   ├── test_api.py         # API 테스트
 │   ├── test_login.py       # Kakao/Naver OAuth 테스트
@@ -62,12 +62,12 @@ playwright install chromium
 
 ## 환경 변수 설정
 
-### 환경 변수 로딩 우선순위
+### 환경 변수 로딩 규칙
 
-프로젝트는 다음 순서로 환경 변수를 로드합니다 (`src/utils/env_loader.py`):
+프로젝트는 환경에 따라 적절한 환경 변수 파일을 로드합니다 (`src/utils/env_loader.py`):
 
-1. **ENV_FILE 환경 변수**(Jenkins credential 파일 경로) - 최우선
-2. **프로젝트 루트의 `.env` 파일**(존재할 경우 후순위로 병합)
+1. **Jenkins 환경**: ENV_FILE 환경 변수(Jenkins credential)만 사용
+2. **로컬 환경**: 프로젝트 루트의 `.env` 파일만 사용
 
 ### 필수 환경 변수
 
@@ -128,18 +128,26 @@ pytest -v -s
 
 ### Jenkins
 
-두 개의 파이프라인이 제공됩니다.
+두 개의 파이프라인이 제공됩니다:
 
-- `ci/Jenkinsfile.test`: 최신 크리덴셜로 가상환경 생성 → 의존성 설치/Playwright 설치 → `ENV_FILE`에서 `BACKEND_BASE_URL`을 추출해 주입하고 JWT/소셜 토큰을 환경 변수로 주입 → pytest 실행 → `Result/**/*.html` 아카이브
-- `ci/Jenkinsfile.refresh`: 토큰 갱신 전용 잡. 가상환경 구성 후 `ci/check_token_status.py`를 실행해 JWT/Kakao/Naver 토큰을 갱신하고 Jenkins 크리덴셜(`todolist_dev` 도메인)에 업데이트.
+#### Jenkinsfile.test
+- 테스트 실행 전용 파이프라인
+- Jenkins credential에서 최신 토큰 및 환경 변수 로드
+- pytest 실행 및 HTML 리포트 아카이브
 
-**Jenkins Credentials 예시:**
-- `todolist_dev_env_test`: ENV_FILE로 전달되는 환경 변수 파일 (Secret file, `BACKEND_BASE_URL` 포함)
-- `JWT_TOKEN`, `JWT_REFRESH_TOKEN`: JWT 토큰 (Secret text)
-- `KAKAO_ACCESS_TOKEN`, `KAKAO_REFRESH_TOKEN`: Kakao OAuth 토큰 (Secret text)
-- `NAVER_ACCESS_TOKEN`, `NAVER_REFRESH_TOKEN`: Naver OAuth 토큰 (Secret text)
-- `KAKAO_REST_API_KEY`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`: 소셜 갱신에 필요
-- `jenkins-admin`: Jenkins 기본 인증 계정 (Username with password)
+#### Jenkinsfile.refresh
+- 토큰 갱신 전용 파이프라인
+- JWT/Kakao/Naver 토큰 갱신 및 유효성 검증
+- Jenkins credential (`todolist_dev` domain)에 업데이트
+
+**필요한 Jenkins Credentials:**
+- `todolist_dev_env_test` (Secret file): 환경 변수 파일 (BACKEND_BASE_URL, WEB_BASE_URL 등)
+- `JWT_TOKEN`, `JWT_REFRESH_TOKEN` (Secret text): JWT 토큰
+- `KAKAO_ACCESS_TOKEN`, `KAKAO_REFRESH_TOKEN` (Secret text): Kakao OAuth 토큰
+- `NAVER_ACCESS_TOKEN`, `NAVER_REFRESH_TOKEN` (Secret text): Naver OAuth 토큰
+- `KAKAO_REST_API_KEY` (Secret text): Kakao 토큰 갱신용 API 키
+- `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` (Secret text): Naver 토큰 갱신용
+- `jenkins-admin` (Username with password): Jenkins API 인증용
 
 ### GitHub Actions
 
@@ -171,16 +179,17 @@ flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
 
 이 프로젝트는 POM 패턴을 사용하여 테스트 코드를 구조화합니다:
 
-- **Actions**: 페이지별 액션을 캡슐화한 클래스 (`src/actions/`)
-  - `BaseAPI`: API 테스트용 기본 클래스
-  - `BasePage`: Web 테스트용 기본 클래스
+- **Actions**: 페이지별 액션을 캡슐화 (`src/actions/`)
+  - `BaseAPI`: API 테스트 기본 클래스
+  - `BasePage`: Web 테스트 기본 클래스
   - `AuthActions`: 인증 관련 액션
   - `TodoActions`: 할일 관리 액션
-- **Locators**: 페이지 요소의 로케이터를 관리 (`src/locators/`)
-- **Utils**: 공통 유틸리티 함수 (`src/utils/`)
-  - `env_loader.py`: 환경 변수 로딩 및 관리
-  - `token_validator.py`: JWT 및 OAuth 토큰 검증 및 갱신
-- **Test Files**: 테스트 케이스만 포함 (`tests/`)
+- **Locators**: 페이지 요소 선택자 관리 (`src/locators/`)
+- **Utils**: 공통 유틸리티 (`src/utils/`)
+  - `env_loader.py`: 환경 변수 로딩
+  - `health_check.py`: 서버 헬스 체크
+  - `jwt.py`: JWT 토큰 주입
+- **Tests**: 테스트 케이스 (`tests/`)
 
 ## 토큰 관리
 
@@ -199,7 +208,8 @@ flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statist
 
 ## 참고사항
 
-- `conftest.py`가 테스트 시작 시 백엔드(`BACKEND_BASE_URL`)/프론트엔드(`WEB_BASE_URL`)의 `/health` 엔드포인트를 체크합니다. 응답이 기대 형태가 아니면 테스트를 중단합니다.
-- Web 테스트를 위해서는 Playwright 브라우저가 설치되어 있어야 합니다 (`playwright install chromium`).
-- API 테스트는 실제 API 서버가 동작 중이어야 합니다.
-- OAuth/JWT 테스트에는 유효한 토큰이 필요하며 자동 갱신 로직은 CI 토큰 매니저(`Jenkinsfile.refresh`)에 한정됩니다.
+- 테스트 시작 시 서버 헬스 체크가 자동으로 실행됩니다 (`conftest.py`)
+  - `SKIP_HEALTH_CHECK=true` 환경 변수로 건너뛸 수 있습니다
+- Web 테스트는 Playwright 브라우저가 필요합니다 (`playwright install chromium`)
+- API 테스트는 실제 서버가 실행 중이어야 합니다
+- 토큰 자동 갱신은 `Jenkinsfile.refresh`에서만 수행됩니다

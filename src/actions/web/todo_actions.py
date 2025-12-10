@@ -14,7 +14,7 @@ class TodoActions:
 
     def __init__(self, page):
         """
-        TodoActions 초기화.
+        TodoActions 초기화
 
         Args:
             page: Playwright Page 인스턴스
@@ -25,7 +25,7 @@ class TodoActions:
 
     def add_todo(self, title):
         """
-        할일 추가.
+        할일 추가
 
         Args:
             title: 할일 제목
@@ -37,7 +37,7 @@ class TodoActions:
 
     def view_todos(self):
         """
-        할일 리스트 확인.
+        할일 리스트 확인
 
         Returns:
             bool: 할일 리스트가 보이는지 여부
@@ -46,7 +46,7 @@ class TodoActions:
 
     def complete_todo(self):
         """
-        할일 완료 처리.
+        할일 완료 처리
         """
         self.base_page.click(self.locators.TODO_ITEM_FIRST)
         self.base_page.click(self.locators.COMPLETE_CHECKBOX)
@@ -54,7 +54,7 @@ class TodoActions:
 
     def verify_todo_completed(self):
         """
-        할일 완료 상태 확인.
+        할일 완료 상태 확인
 
         Returns:
             bool: 할일이 완료되었는지 여부
@@ -63,7 +63,7 @@ class TodoActions:
 
     def _click_delete_button(self):
         """
-        삭제 버튼 클릭 (내부 메서드).
+        삭제 버튼 클릭 (내부 메서드)
         """
         delete_button = self.page.locator(self.locators.DELETE_BUTTON_FIRST)
         delete_button.wait_for(state="visible")
@@ -73,9 +73,9 @@ class TodoActions:
 
     def delete_todo(self):
         """
-        할일 삭제.
-
-        삭제 버튼 클릭 후 확인 팝업에서 확인 버튼을 클릭하여 삭제를 완료합니다.
+        할일 삭제
+        
+        삭제 버튼 클릭 후 확인 팝업에서 확인 버튼 클릭
         """
         initial_count = self.get_todo_count()
 
@@ -107,18 +107,16 @@ class TodoActions:
                     log.info("Deleted todo")
                     return
             self.page.wait_for_timeout(WAIT_INTERVAL_MS)
-
-        # 타임아웃 후에도 개수가 줄어들지 않으면 경고
+        
         final_count = todo_items.count()
         log.warning(f"삭제 후 개수 확인: 초기={initial_count}, 예상={expected_count}, 실제={final_count}")
-
         log.info("Deleted todo")
 
     def cancel_delete_todo(self):
         """
-        할일 삭제 취소.
-
-        삭제 버튼 클릭 후 확인 팝업에서 취소 버튼을 클릭하여 삭제를 취소합니다.
+        할일 삭제 취소
+        
+        삭제 버튼 클릭 후 확인 팝업에서 취소 버튼 클릭
         """
         # 브라우저 다이얼로그 핸들러 설정
         def handle_dialog(dialog):
@@ -135,7 +133,7 @@ class TodoActions:
 
     def get_todo_count(self):
         """
-        할일 개수 반환.
+        할일 개수 반환
 
         Returns:
             int: 할일 개수

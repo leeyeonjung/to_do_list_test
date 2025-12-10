@@ -9,7 +9,7 @@ class BasePage:
 
     def __init__(self, page):
         """
-        BasePage 초기화.
+        BasePage 초기화
 
         Args:
             page: Playwright Page 인스턴스
@@ -18,7 +18,7 @@ class BasePage:
 
     def find_element(self, selector):
         """
-        요소 찾기.
+        요소 찾기
 
         Args:
             selector: CSS 선택자 또는 XPath
@@ -33,7 +33,7 @@ class BasePage:
 
     def click(self, selector):
         """
-        요소 클릭.
+        요소 클릭
 
         Args:
             selector: CSS 선택자 또는 XPath
@@ -44,7 +44,7 @@ class BasePage:
 
     def fill(self, selector, text):
         """
-        입력 필드에 텍스트 입력.
+        입력 필드에 텍스트 입력
 
         Args:
             selector: CSS 선택자 또는 XPath
@@ -54,9 +54,9 @@ class BasePage:
         element.fill(text)
         log.info(f"Filled element {selector} with text: {text}")
 
-    def is_visible(self, selector, timeout=None):
+    def is_visible(self, selector):
         """
-        요소가 보이는지 확인.
+        요소가 보이는지 확인
 
         Args:
             selector: CSS 선택자 또는 XPath
@@ -65,8 +65,6 @@ class BasePage:
             요소가 보이면 True, 그렇지 않으면 False
         """
         element = self.page.locator(selector).first
-        
-        # 요소가 보이는지 확인
         if element.count() == 0:
             return False
         
@@ -75,7 +73,7 @@ class BasePage:
 
     def navigate(self, url):
         """
-        URL로 이동.
+        URL로 이동
 
         Args:
             url: 이동할 URL
@@ -85,7 +83,7 @@ class BasePage:
 
     def wait_for_load_state(self, state="load"):
         """
-        페이지 로드 상태 대기.
+        페이지 로드 상태 대기
 
         Args:
             state: 대기할 로드 상태 (load, domcontentloaded, networkidle)

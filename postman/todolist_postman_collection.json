@@ -1,0 +1,811 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "TodoList API Test Collection",
+		"description": "test_login.py와 test_api.py의 API 테스트를 Postman으로 실행할 수 있는 컬렉션",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Backend Health Check (JSON)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is JSON\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"Status is ok\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql(\"ok\");",
+									"});",
+									"",
+									"pm.test(\"Message is correct\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.eql(\"Server is running\");",
+									"});",
+									"",
+									"console.log(\"✅ Backend server is healthy\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/health",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "백엔드 서버 헬스 체크 (JSON 응답)"
+					},
+					"response": []
+				},
+				{
+					"name": "Web Health Check (Text)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response body is 'healthy'\", function () {",
+									"    pm.expect(pm.response.text().trim()).to.eql(\"healthy\");",
+									"});",
+									"",
+									"console.log(\"✅ Web server is healthy\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{WEB_BASE_URL}}/health",
+							"host": [
+								"{{WEB_BASE_URL}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "웹 서버 헬스 체크 (Text 응답: 'healthy')"
+					},
+					"response": []
+				}
+			],
+			"description": "서버 헬스 체크 API"
+		},
+		{
+			"name": "Token Management",
+			"item": [
+				{
+					"name": "Refresh JWT Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    // Save tokens to environment",
+									"    pm.environment.set(\"JWT_TOKEN\", jsonData.token);",
+									"    pm.environment.set(\"JWT_REFRESH_TOKEN\", jsonData.refreshToken);",
+									"    ",
+									"    console.log(\"JWT Token saved to environment\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{JWT_REFRESH_TOKEN}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/auth/refresh",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "JWT 토큰 갱신 후 자동으로 Environment에 저장"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate JWT Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    console.log(\"JWT Token is valid\");",
+									"} else {",
+									"    console.log(\"JWT Token is invalid or expired\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{JWT_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/auth/me",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						},
+						"description": "JWT 토큰 유효성 검증"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Kakao Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    // Save tokens to environment",
+									"    pm.environment.set(\"KAKAO_ACCESS_TOKEN\", jsonData.access_token);",
+									"    ",
+									"    if (jsonData.refresh_token) {",
+									"        pm.environment.set(\"KAKAO_REFRESH_TOKEN\", jsonData.refresh_token);",
+									"    }",
+									"    ",
+									"    console.log(\"Kakao Token saved to environment\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "grant_type",
+									"value": "refresh_token",
+									"type": "text"
+								},
+								{
+									"key": "client_id",
+									"value": "{{KAKAO_REST_API_KEY}}",
+									"type": "text"
+								},
+								{
+									"key": "refresh_token",
+									"value": "{{KAKAO_REFRESH_TOKEN}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://kauth.kakao.com/oauth/token",
+							"protocol": "https",
+							"host": [
+								"kauth",
+								"kakao",
+								"com"
+							],
+							"path": [
+								"oauth",
+								"token"
+							]
+						},
+						"description": "Kakao 토큰 갱신 후 자동으로 Environment에 저장"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Kakao Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    console.log(\"Kakao Token is valid\");",
+									"    var jsonData = pm.response.json();",
+									"    console.log(\"User ID:\", jsonData.id);",
+									"} else {",
+									"    console.log(\"Kakao Token is invalid or expired\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{KAKAO_ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "https://kapi.kakao.com/v2/user/me",
+							"protocol": "https",
+							"host": [
+								"kapi",
+								"kakao",
+								"com"
+							],
+							"path": [
+								"v2",
+								"user",
+								"me"
+							]
+						},
+						"description": "Kakao 토큰 유효성 검증"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Naver Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    // Save tokens to environment",
+									"    pm.environment.set(\"NAVER_ACCESS_TOKEN\", jsonData.access_token);",
+									"    ",
+									"    if (jsonData.refresh_token) {",
+									"        pm.environment.set(\"NAVER_REFRESH_TOKEN\", jsonData.refresh_token);",
+									"    }",
+									"    ",
+									"    console.log(\"Naver Token saved to environment\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "grant_type",
+									"value": "refresh_token",
+									"type": "text"
+								},
+								{
+									"key": "client_id",
+									"value": "{{NAVER_CLIENT_ID}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{NAVER_CLIENT_SECRET}}",
+									"type": "text"
+								},
+								{
+									"key": "refresh_token",
+									"value": "{{NAVER_REFRESH_TOKEN}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://nid.naver.com/oauth2.0/token",
+							"protocol": "https",
+							"host": [
+								"nid",
+								"naver",
+								"com"
+							],
+							"path": [
+								"oauth2.0",
+								"token"
+							]
+						},
+						"description": "Naver 토큰 갱신 후 자동으로 Environment에 저장"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Naver Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    console.log(\"Naver Token is valid\");",
+									"    var jsonData = pm.response.json();",
+									"    console.log(\"User:\", jsonData.response);",
+									"} else {",
+									"    console.log(\"Naver Token is invalid or expired\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{NAVER_ACCESS_TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "https://openapi.naver.com/v1/nid/me",
+							"protocol": "https",
+							"host": [
+								"openapi",
+								"naver",
+								"com"
+							],
+							"path": [
+								"v1",
+								"nid",
+								"me"
+							]
+						},
+						"description": "Naver 토큰 유효성 검증"
+					},
+					"response": []
+				}
+			],
+			"description": "토큰 갱신 및 유효성 검증 API (자동으로 Environment에 저장)"
+		},
+		{
+			"name": "Social Login",
+			"item": [
+				{
+					"name": "Kakao Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has token field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('token');",
+									"    pm.expect(jsonData.token).to.not.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Response has refreshToken field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('refreshToken');",
+									"    pm.expect(jsonData.refreshToken).to.not.be.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accessToken\": \"{{KAKAO_ACCESS_TOKEN}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/auth/kakao",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"kakao"
+							]
+						},
+						"description": "Kakao AccessToken으로 JWT 발급 여부 확인"
+					},
+					"response": []
+				},
+				{
+					"name": "Naver Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has token field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('token');",
+									"    pm.expect(jsonData.token).to.not.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Response has refreshToken field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('refreshToken');",
+									"    pm.expect(jsonData.refreshToken).to.not.be.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accessToken\": \"{{NAVER_ACCESS_TOKEN}}\"\n}"
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/auth/naver",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"naver"
+							]
+						},
+						"description": "Naver AccessToken으로 JWT 발급 여부 확인"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Todo CRUD",
+			"item": [
+				{
+					"name": "Get All Todos",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/todos",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"todos"
+							]
+						},
+						"description": "모든 할일 조회 테스트"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Todo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"pm.test(\"Todo title matches request\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.title).to.eql(\"Test Todo\");",
+									"});",
+									"",
+									"// Save todo ID for subsequent requests",
+									"var jsonData = pm.response.json();",
+									"if (jsonData.id) {",
+									"    pm.environment.set(\"TODO_ID\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test Todo\",\n    \"description\": \"This is a test todo\",\n    \"completed\": false\n}"
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/todos",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"todos"
+							]
+						},
+						"description": "새 할일 생성 테스트"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Todo By ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Todo ID matches\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.eql(pm.environment.get(\"TODO_ID\"));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/todos/{{TODO_ID}}",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"todos",
+								"{{TODO_ID}}"
+							]
+						},
+						"description": "ID로 할일 조회 테스트 (먼저 Create Todo를 실행하여 TODO_ID를 생성해야 합니다)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Todo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Todo title is updated\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.title).to.eql(\"Updated Todo\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Todo\",\n    \"completed\": true\n}"
+						},
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/todos/{{TODO_ID}}",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"todos",
+								"{{TODO_ID}}"
+							]
+						},
+						"description": "할일 수정 테스트 (먼저 Create Todo를 실행하여 TODO_ID를 생성해야 합니다)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Todo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 204\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/todos/{{TODO_ID}}",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"todos",
+								"{{TODO_ID}}"
+							]
+						},
+						"description": "할일 삭제 테스트 (먼저 Create Todo를 실행하여 TODO_ID를 생성해야 합니다)"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Todo Deleted (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BACKEND_BASE_URL}}/api/todos/{{TODO_ID}}",
+							"host": [
+								"{{BACKEND_BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"todos",
+								"{{TODO_ID}}"
+							]
+						},
+						"description": "삭제된 할일이 404를 반환하는지 확인 (Delete Todo 실행 후 테스트)"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
+

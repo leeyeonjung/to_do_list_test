@@ -1,19 +1,19 @@
-# ✅ Todo List Test Automation
+# Todo List Test Automation
 
-본 프로젝트는 **Web 서비스 배포 파이프라인에 테스트 자동화를 통합**하여  
-코드 변경부터 운영 배포까지의 전 과정을 **QA 관점에서 안정적으로 검증**하기 위해 설계된 테스트 자동화 프로젝트입니다.
+본 프로젝트는 Web 서비스 배포 파이프라인에 테스트 자동화를 통합하여  
+코드 변경부터 운영 배포까지의 전 과정을 QA 관점에서 안정적으로 검증하기 위해 설계된 테스트 자동화 프로젝트입니다.
 
-테스트는 **pytest + Page Object Model(POM)** 기반으로 API 및 Web UI 레벨에서 수행되며,  
-**인증 토큰 갱신을 테스트 코드와 분리**해 파이프라인 레벨에서 관리함으로써 외부 인증 상태 변화로 인한 불안정성을 최소화했습니다.
+테스트는 pytest + Page Object Model(POM) 기반으로 API 및 Web UI 레벨에서 수행되며,  
+인증 토큰 갱신을 테스트 코드와 분리해 파이프라인 레벨에서 관리함으로써 외부 인증 상태 변화로 인한 불안정성을 최소화했습니다.
 
 ---
 
 ## 📌 핵심 포인트
 
-- **배포 후 자동 테스트 트리거**: Dev 배포 → Token Refresh → API/UI E2E 테스트
-- **인증 관리 책임 분리**: 토큰 갱신은 별도 파이프라인에서 처리, 테스트 코드는 검증에 집중
-- **유지보수성**: POM 구조로 UI 변경에 강한 코드 구성
-- **추적 가능성**: pytest-html 리포트 및 Jenkins 아카이브로 실행 이력 관리
+- 배포 후 자동 테스트 트리거: Dev 배포 → Token Refresh → API/UI E2E 테스트
+- 인증 관리 책임 분리: 토큰 갱신은 별도 파이프라인에서 처리, 테스트 코드는 검증에 집중
+- 유지보수성: POM 구조로 UI 변경에 강한 코드 구성
+- 추적 가능성: pytest-html 리포트 및 Jenkins 아카이브로 실행 이력 관리
 
 ---
 
@@ -23,6 +23,8 @@
 - [🗺 파이프라인 구성도](#-파이프라인-구성도)
 - [🔁 동작 흐름](#-동작-흐름)
 - [🧩 기술 스택](#-기술-스택)
+- [⚙️ Quick Start](#quick-start)
+- [🌎 Environment Variables](#-environment-variables)
 - [🗂 프로젝트 구조](#-프로젝트-구조)
 - [🏗 테스트 코드 설계 (POM)](#-테스트-코드-설계-pom)
 - [🚀 Jenkins 파이프라인 구성](#-jenkins-파이프라인-구성)
@@ -38,11 +40,15 @@
 
 https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 
+- Test Report 예시 ([Link](https://htmlpreview.github.io/?https://github.com/leeyeonjung/to_do_list_test/blob/main/Result/2025-12-15_14-10-45/report_2025-12-15_14-10-45.html))
+<img width="640" height="289" alt="todolist_Report" src="https://github.com/user-attachments/assets/3d433d3a-2582-4752-9b2c-ccb842f308cf" />
+
+
 ---
 
 ## 🗺 파이프라인 구성도
+<img width="512" height="340" alt="todolist" src="https://github.com/user-attachments/assets/2f70574a-a86a-4ab5-8c9e-e7b50f0db950" />
 
-![pipeline](https://github.com/user-attachments/assets/9a5272cd-6c62-440e-9335-585b63f4ce60)
 
 ---
 
@@ -61,7 +67,6 @@ https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 ---
 
 ## 🧩 기술 스택
-
 | 구분 | 기술 |
 |---|---|
 | Test Framework | pytest, pytest-check, pytest-html |
@@ -70,6 +75,40 @@ https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 | Config | python-dotenv |
 | Quality | Flake8 |
 | CI/CD | Jenkins, GitHub Actions |
+
+---
+
+<a name="quick-start"></a>
+## ⚙️ Quick Start
+```bash
+pip install -r requirements.txt
+playwright install chromium
+pytest -q
+```
+
+---
+
+## 🌎 Environment Variables
+| 그룹 | KEY | 용도 |
+|---|---|---|
+| Web | `WEB_BASE_URL` | Web 서비스 Base URL |
+| Backend | `BACKEND_BASE_URL` | Backend(API) Base URL |
+| Browser | `HEADLESS` | Playwright Headless 실행 여부 (`true/false`) |
+| Kakao OAuth | `KAKAO_REST_API_KEY` | Kakao OAuth Client Key |
+| Kakao OAuth | `KAKAO_ACCESS_TOKEN` | Kakao Access Token |
+| Kakao OAuth | `KAKAO_REFRESH_TOKEN` | Kakao Refresh Token |
+| Naver OAuth | `NAVER_CLIENT_ID` | Naver Client ID |
+| Naver OAuth | `NAVER_CLIENT_SECRET` | Naver Client Secret |
+| Naver OAuth | `NAVER_ACCESS_TOKEN` | Naver Access Token |
+| Naver OAuth | `NAVER_REFRESH_TOKEN` | Naver Refresh Token |
+| Web Test (Playwright) | `WEB_TEST_JWT_TOKEN` | Web UI 테스트용 JWT(Playwright 로그인/세션 용) |
+| Web Test (Playwright) | `WEB_TEST_JWT_USER` | Web UI 테스트용 사용자 식별 정보 |
+| Test User | `JWT_USER_ID` | 테스트 사용자 ID |
+| Test User | `JWT_USER_EMAIL` | 테스트 사용자 이메일 |
+| Test User | `JWT_USER_PROVIDER` | 테스트 사용자 Provider (`test` 등) |
+| JWT/Auth | `JWT_SECRET` | JWT 서명/검증용 Secret |
+| JWT/Auth | `JWT_TOKEN` | JWT Access Token |
+| JWT/Auth | `JWT_REFRESH_TOKEN` | JWT Refresh Token |
 
 ---
 
@@ -120,18 +159,18 @@ todolist_test/
 
 ## 🏗 테스트 코드 설계 (POM)
 
-POM 구조를 적용하여 **UI 변경에 강한 테스트 코드 구조**를 유지했습니다.  
+POM 구조를 적용하여 UI 변경에 강한 테스트 코드 구조를 유지했습니다.  
 또한 인증 관리를 파이프라인으로 분리해 각 책임을 명확히 했습니다.
 
-- 인증 상태 관리 → **Token Refresh Pipeline**
-- 테스트 검증 로직 → **Test Pipeline**
+- 인증 상태 관리 → Token Refresh Pipeline
+- 테스트 검증 로직 → Test Pipeline
 
 ### 구성 요소
 
-- **Actions**: 비즈니스 동작 정의 (`src/actions/`)  
-- **Locators**: UI 선택자 관리 (`src/locators/`)  
-- **Utils**: 환경·토큰 공통 모듈 (`src/utils/`)  
-- **Tests**: 테스트 시나리오 (`tests/`)  
+- Actions: 비즈니스 동작 정의 (`src/actions/`)  
+- Locators: UI 선택자 관리 (`src/locators/`)  
+- Utils: 환경·토큰 공통 모듈 (`src/utils/`)  
+- Tests: 테스트 시나리오 (`tests/`)  
 
 ---
 

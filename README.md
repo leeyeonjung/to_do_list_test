@@ -47,7 +47,8 @@ https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 ---
 
 ## 🗺 파이프라인 구성도
-<img width="512" height="340" alt="todolist" src="https://github.com/user-attachments/assets/2f70574a-a86a-4ab5-8c9e-e7b50f0db950" />
+<img width="512" height="340" alt="todolist" src="https://github.com/user-attachments/assets/8ff1fe7a-1701-4413-9ee3-4961781911c9" />
+
 
 
 ---

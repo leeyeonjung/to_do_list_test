@@ -197,6 +197,7 @@ POM 구조를 적용하여 UI 변경에 강한 테스트 코드 구조를 유지
 ---
 
 ## 📊 테스트 리포트
+- [Example Link](https://htmlpreview.github.io/?https://github.com/leeyeonjung/to_do_list_test/blob/main/Result/2025-12-15_14-10-45/report_2025-12-15_14-10-45.html)
 
 - 저장 위치  
   `Result/{YYYY-MM-DD_HH-MM-SS}/`

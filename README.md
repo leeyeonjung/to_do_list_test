@@ -84,7 +84,7 @@ https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 ```bash
 pip install -r requirements.txt
 playwright install chromium
-pytest -q
+pytest -v
 ```
 
 ---

@@ -1,185 +1,186 @@
-# Todo List Test Automation
+# ✅ Todo List Test Automation
 
-이 테스트 자동화 프로젝트는 **pytest와 POM(Page Object Model)** 구조를 기반으로 API·UI 레벨의 동작을 검증하도록 설계된 품질 보증 테스트 스택입니다.  
-Dev 이미지가 배포되면 **Token Refresh 파이프라인이 자동 트리거**되어 최신 인증 상태를 유지하고, Refresh 단계가 성공하면 **API/UI 통합 테스트가 실행**되어 서비스의 엔드투엔드 품질을 검증하는 구조로 구성돼 있습니다.
+본 프로젝트는 **Web 서비스 배포 파이프라인에 테스트 자동화를 통합**하여  
+코드 변경부터 운영 배포까지의 전 과정을 **QA 관점에서 안정적으로 검증**하기 위해 설계된 테스트 자동화 프로젝트입니다.
+
+테스트는 **pytest + Page Object Model(POM)** 기반으로 API 및 Web UI 레벨에서 수행되며,  
+**인증 토큰 갱신을 테스트 코드와 분리**해 파이프라인 레벨에서 관리함으로써 외부 인증 상태 변화로 인한 불안정성을 최소화했습니다.
+
+---
+
+## 📌 핵심 포인트
+
+- **배포 후 자동 테스트 트리거**: Dev 배포 → Token Refresh → API/UI E2E 테스트
+- **인증 관리 책임 분리**: 토큰 갱신은 별도 파이프라인에서 처리, 테스트 코드는 검증에 집중
+- **유지보수성**: POM 구조로 UI 변경에 강한 코드 구성
+- **추적 가능성**: pytest-html 리포트 및 Jenkins 아카이브로 실행 이력 관리
+
+---
+
+## 🧭 목차
+
+- [🎬 실행 결과](#-실행-결과)
+- [🗺 파이프라인 구성도](#-파이프라인-구성도)
+- [🔁 동작 흐름](#-동작-흐름)
+- [🧩 기술 스택](#-기술-스택)
+- [🗂 프로젝트 구조](#-프로젝트-구조)
+- [🏗 테스트 코드 설계 (POM)](#-테스트-코드-설계-pom)
+- [🚀 Jenkins 파이프라인 구성](#-jenkins-파이프라인-구성)
+- [📊 테스트 리포트](#-테스트-리포트)
+- [📮 Postman API 테스트](#-postman-api-테스트)
+- [🔗 참고 링크](#-참고-링크)
+
+---
+
+## 🎬 실행 결과
+
+- 파이프라인 실행 영상
+
+https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
+
+---
+
+## 🗺 파이프라인 구성도
+
+![pipeline](https://github.com/user-attachments/assets/9a5272cd-6c62-440e-9335-585b63f4ce60)
+
+---
+
+## 🔁 동작 흐름
+
+1. App Source Repository 코드 변경  
+2. GitHub Webhook → Jenkins Controller 트리거  
+3. Application Pipeline (`todolist_deploy`) 실행  
+4. Test 환경 Docker 이미지 빌드 및 배포  
+5. Token Refresh Pipeline (`todolist_refresh_tokens`) 실행  
+6. Jenkins Credentials 인증 정보 갱신  
+7. Test Pipeline (`todolist_test`)에서 API / Web UI 테스트 실행  
+8. 테스트 성공 시 Production 환경 배포  
+9. 테스트 결과 Jenkins 아카이브 관리  
 
 ---
 
 ## 🧩 기술 스택
 
-- pytest / pytest-html / pytest-check  
-- Playwright  
-- requests  
-- python-dotenv  
-- Flake8  
-- Jenkins / GitHub Actions  
-
----
-
-## 🏗 Page Object Model (POM)
-
-### 구성 요소
-- **Actions**: 비즈니스 액션 (`src/actions/`)  
-- **Locators**: 선택자 (`src/locators/`)  
-- **Utils**: 공통 모듈 (`src/utils/`)  
-- **Tests**: 실제 테스트 케이스 (`tests/`)  
+| 구분 | 기술 |
+|---|---|
+| Test Framework | pytest, pytest-check, pytest-html |
+| Web Automation | Playwright |
+| API Test | requests |
+| Config | python-dotenv |
+| Quality | Flake8 |
+| CI/CD | Jenkins, GitHub Actions |
 
 ---
 
 ## 🗂 프로젝트 구조
 
-```
+```text
 todolist_test/
-├── .gitignore
-├── .flake8
-├── conftest.py
-├── pytest.ini
-├── requirements.txt
-├── ci/
-│   ├── Jenkinsfile.test
-│   ├── Jenkinsfile.refresh
-│   └── check_token_status.py
-├── postman/
-│   ├── README.md
-│   ├── todolist_postman_collection.json
-│   └── todolist_postman_environment.json
-├── src/
-│   ├── actions/
+├── .github/                          # GitHub Actions 설정
+│   └── workflows/                    # 워크플로우 정의 폴더
+│       └── lint.yml                  # 코드 린트(Flake8 등) 자동 실행 워크플로우
+├── ci/                               # Jenkins 파이프라인/토큰 관련
+│   ├── jenkinsfile.refresh           # 토큰 갱신 파이프라인
+│   ├── jenkinsfile.test              # 테스트 실행 파이프라인
+│   └── check_token_status.py         # 토큰 상태 점검 스크립트
+├── postman/                          # Postman 수동 API 테스트
+│   ├── README.md                     # 사용 가이드
+│   ├── todolist_postman_collection.json   # 요청 모음(컬렉션)
+│   └── todolist_postman_environment.json  # 환경 변수 템플릿
+├── src/                              # 재사용 코드(POM)
+│   ├── actions/                      # 동작 정의(API/UI 액션)
 │   │   ├── api/
-│   │   │   └── base_api.py
+│   │   │   └── base_api.py           # API 공통 요청 베이스
 │   │   └── web/
-│   │       ├── auth_actions.py
-│   │       ├── base_page.py
-│   │       └── todo_actions.py
-│   ├── locators/
+│   │       ├── auth_actions.py       # 인증/로그인 액션
+│   │       ├── base_page.py          # 공통 페이지 베이스
+│   │       └── todo_actions.py       # Todo 화면 액션
+│   ├── locators/                     # UI 선택자 모음
 │   │   └── web/
-│   │       ├── auth_locators.py
-│   │       └── todo_locators.py
-│   └── utils/
-│       ├── env_loader.py
-│       ├── health_check.py
-│       └── jwt.py
-├── tests/
-│   ├── test_api.py
-│   ├── test_login.py
-│   └── test_web.py
-└── Result/
+│   │       ├── auth_locators.py      # 인증 화면 선택자
+│   │       └── todo_locators.py      # Todo 화면 선택자
+│   └── utils/                        # 공통 유틸
+│       ├── env_loader.py             # 환경 변수 로딩
+│       ├── health_check.py           # 상태 점검
+│       └── jwt.py                    # JWT 유틸
+├── tests/                            # 테스트 시나리오
+│   ├── test_api.py                   # API 테스트
+│   ├── test_login.py                 # 로그인 테스트
+│   └── test_web.py                   # Web UI 테스트
+├── Result/                           # 테스트 결과/리포트 저장
+├── conftest.py                       # pytest 공통 fixture
+├── pytest.ini                        # pytest 설정
+├── .flake8                           # 린트 규칙
+├── .gitignore                        # 제외 파일 목록
+└── requirements.txt                  # 의존성 목록
 ```
 
 ---
 
-## 🚀 CI/CD 파이프라인
+## 🏗 테스트 코드 설계 (POM)
 
-### Jenkins 구성 개요
-프로젝트는 운영·테스트 품질을 보장하기 위해 **두 개의 독립 파이프라인**을 제공합니다.
+POM 구조를 적용하여 **UI 변경에 강한 테스트 코드 구조**를 유지했습니다.  
+또한 인증 관리를 파이프라인으로 분리해 각 책임을 명확히 했습니다.
 
-### 🧪 Jenkinsfile.test — 테스트 실행 파이프라인
+- 인증 상태 관리 → **Token Refresh Pipeline**
+- 테스트 검증 로직 → **Test Pipeline**
 
-- 최신 소스 체크아웃 및 venv 표준화  
-- Playwright Chromium 설치  
-- Jenkins Credential 기반 환경 변수/토큰 로드  
-- 백엔드/웹 엔드포인트 ENV 파싱  
-- API + UI 통합 테스트 실행  
-- HTML 리포트 자동 아카이브  
+### 구성 요소
 
-### 🔄 Jenkinsfile.refresh — 토큰 갱신 파이프라인
-
-- Token Manager 스크립트 실행 준비  
-- 가상환경 생성 및 패키지 설치  
-- JWT/Naver/Kakao 토큰 Credential 로드  
-- ENV 파일에서 OAuth Client 정보 파싱  
-- 만료 토큰 자동 갱신 및 Jenkins Credential 업데이트  
-
-### 필요한 Jenkins Credentials
-- `todolist_dev_env_test` (Secret file)  
-- `JWT_TOKEN`, `JWT_REFRESH_TOKEN`  
-- `KAKAO_ACCESS_TOKEN`, `KAKAO_REFRESH_TOKEN`  
-- `NAVER_ACCESS_TOKEN`, `NAVER_REFRESH_TOKEN`  
-- `KAKAO_REST_API_KEY`  
-- `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`  
-- `jenkins-admin`  
+- **Actions**: 비즈니스 동작 정의 (`src/actions/`)  
+- **Locators**: UI 선택자 관리 (`src/locators/`)  
+- **Utils**: 환경·토큰 공통 모듈 (`src/utils/`)  
+- **Tests**: 테스트 시나리오 (`tests/`)  
 
 ---
 
-## 🧼 코드 품질 검사 (Flake8)
+## 🚀 Jenkins 파이프라인 구성
+- Jenkins: http://3.36.219.242:8080 (ID: guest / PW: guest)
+(상세 링크 하단 [🔗 참고 링크](#-참고-링크) 참조)
 
-간단 검사:
-```bash
-flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-```
+### 🔹 Application Pipeline (`todolist_deploy`)
+- main 브랜치 변경 감지  
+- Test 환경 Docker 이미지 빌드 및 배포  
+- 테스트 성공 시 Production 환경 배포  
 
-전체 검사:
-```bash
-flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-```
+### 🔹 Token Refresh Pipeline (`todolist_refresh_tokens`)
+- 테스트 전 인증 토큰 유효성 점검  
+- JWT / Kakao / Naver 토큰 자동 갱신  
+- Jenkins Credentials 중앙 관리  
 
----
-
-## ⚙️ 설치 방법
-
-### 1) 의존성 설치
-```bash
-pip install -r requirements.txt
-```
-
-### 2) Playwright 브라우저 설치
-```bash
-playwright install chromium
-```
-
-### 3) 환경 변수 설정
-`.env` 파일 생성 후 값 입력  
-(템플릿 `.env.example` 포함됨)
-
----
-
-## 🌎 환경 변수 설정
-
-### ✔ 로딩 규칙 (`env_loader.py`)
-1. **Jenkins 환경** → ENV_FILE(Jenkins Credential)만 로드  
-2. **로컬 환경** → 프로젝트 루트 `.env` 로드
-
-### ✔ 필수 환경 변수 그룹
-- **Web / Backend URL**
-- **Kakao / Naver OAuth 토큰 및 Client 정보**
-- **JWT 인증 정보**
-- **브라우저 설정 (HEADLESS)**
+### 🔹 Test Pipeline (`todolist_test`)
+- 최신 인증 정보 기반 API / Web UI 테스트 실행  
+- Headless Web UI 테스트  
+- HTML 리포트 생성 및 Jenkins 아카이브  
 
 ---
 
 ## 📊 테스트 리포트
 
-모든 실행 결과는 자동으로:
+- 저장 위치  
+  `Result/{YYYY-MM-DD_HH-MM-SS}/`
 
-`Result/{YYYY-MM-DD_HH-MM-SS}/`  
-
-에 HTML 리포트로 저장됩니다.
-
-포함 내용:
-- 통과/실패 요약  
-- 실행 시간  
-- 실행 로그  
-- 오류 상세  
+- 제공 정보  
+  - 통과 / 실패 요약  
+  - 실행 시간  
+  - 오류 상세  
 
 ---
-
 ## 📮 Postman API 테스트
 
-GUI 환경에서 API를 수동 테스트하고 싶다면 Postman Collection을 사용할 수 있습니다.
-
-**📂 위치**: `postman/`  
-**📘 가이드**: `postman/README.md`
-
-### 제공 기능
-- Health Check  
-- Token 갱신  
-- Kakao/Naver OAuth  
-- Todo CRUD  
-
-### 빠른 시작
-1. Collection import  
-2. Environment import  
-3. 변수 입력  
-4. API 실행  
+- 📂 폴더: [`postman/`](https://github.com/leeyeonjung/to_do_list_test/tree/main/postman)
+- 📘 가이드: [`postman/README.md`](https://github.com/leeyeonjung/to_do_list_test/blob/main/postman/README.md)
+- 🧾 컬렉션: [`todolist_postman_collection.json`](https://github.com/leeyeonjung/to_do_list_test/blob/main/postman/todolist_postman_collection.json)
+- 🌎 환경 템플릿: [`todolist_postman_environment.json`](https://github.com/leeyeonjung/to_do_list_test/blob/main/postman/todolist_postman_environment.json)
 
 ---
+
+## 🔗 참고 링크
+
+- App Source Repository: https://github.com/leeyeonjung/to_do_list_app  
+- Jenkins: http://3.36.219.242:8080 (ID: guest / PW: guest)  
+  - `todolist_deploy`: http://3.36.219.242:8080/view/todolist/job/todolist_deploy/  
+  - `todolist_refresh_tokens`: http://3.36.219.242:8080/view/todolist/job/todolist_refresh_tokens/  
+  - `todolist_test`: http://3.36.219.242:8080/view/todolist/job/todolist_test/
+

@@ -1,4 +1,4 @@
-# Todo List Test Automation
+# Web Test Automation (To do List)
 
 본 프로젝트는 Web 서비스 배포 파이프라인에 테스트 자동화를 통합하여  
 코드 변경부터 운영 배포까지의 전 과정을 QA 관점에서 안정적으로 검증하기 위해 설계된 테스트 자동화 프로젝트입니다.

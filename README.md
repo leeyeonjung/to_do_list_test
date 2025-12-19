@@ -3,14 +3,14 @@
 본 프로젝트는 Web 서비스 배포 파이프라인에 테스트 자동화를 통합하여  
 코드 변경부터 운영 배포까지의 전 과정을 QA 관점에서 안정적으로 검증하기 위해 설계된 테스트 자동화 프로젝트입니다.
 
-테스트는 pytest + Page Object Model(POM) 기반으로 API 및 Web UI 레벨에서 수행되며,  
-인증 토큰 갱신을 테스트 코드와 분리해 파이프라인 레벨에서 관리함으로써 외부 인증 상태 변화로 인한 불안정성을 최소화했습니다.
+pytest와 Page Object Model(POM) 기반의 API 및 Web UI 테스트가 수행되며,
+인증 토큰 갱신을 테스트 데이터 셋업 단계로 정의하고 테스트 코드와 분리하여 Flaky 테스트 발생을 최소화했습니다.
 
 ---
 
 ## 📌 핵심 포인트
 
-- 배포 후 자동 테스트 트리거: Dev 배포 → Token Refresh → API/UI E2E 테스트
+- 배포 후 자동 테스트 트리거: Dev 배포 → Token Refresh → API/UI E2E 테스트 → Prod 배포
 - 인증 관리 책임 분리: 토큰 갱신은 별도 파이프라인에서 처리, 테스트 코드는 검증에 집중
 - 유지보수성: POM 구조로 UI 변경에 강한 코드 구성
 - 추적 가능성: pytest-html 리포트 및 Jenkins 아카이브로 실행 이력 관리
@@ -29,7 +29,6 @@
 - [🏗 테스트 코드 설계 (POM)](#-테스트-코드-설계-pom)
 - [🚀 Jenkins 파이프라인 구성](#-jenkins-파이프라인-구성)
 - [📊 테스트 리포트](#-테스트-리포트)
-- [📮 Postman API 테스트](#-postman-api-테스트)
 - [🔗 참고 링크](#-참고-링크)
 
 ---
@@ -38,7 +37,7 @@
 
 - 파이프라인 실행 영상
 
-https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
+https://github.com/user-attachmnts/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 
 - Test Report 예시 ([Link](https://htmlpreview.github.io/?https://github.com/leeyeonjung/to_do_list_test/blob/main/Result/2025-12-15_14-10-45/report_2025-12-15_14-10-45.html))
 <img width="640" height="289" alt="todolist_Report" src="https://github.com/user-attachments/assets/3d433d3a-2582-4752-9b2c-ccb842f308cf" />
@@ -59,8 +58,9 @@ https://github.com/user-attachments/assets/55f1d85b-0fa9-4bcb-a511-4af79b46bdc9
 2. GitHub Webhook → Jenkins Controller 트리거  
 3. Application Pipeline (`todolist_deploy`) 실행  
 4. Test 환경 Docker 이미지 빌드 및 배포  
-5. Token Refresh Pipeline (`todolist_refresh_tokens`) 실행  
-6. Jenkins Credentials 인증 정보 갱신  
+5. Token Refresh Pipeline (`todolist_refresh_tokens`) 실행
+6. kins Credentials 인증 정보 갱신  
+
 7. Test Pipeline (`todolist_test`)에서 API / Web UI 테스트 실행  
 8. 테스트 성공 시 Production 환경 배포  
 9. 테스트 결과 Jenkins 아카이브 관리  
